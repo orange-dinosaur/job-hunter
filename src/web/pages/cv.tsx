@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { CvState } from "../../server/api/cv.ts";
 import type { SearchOperation } from "../../server/api/runs.ts";
 import { CvEditor } from "./cv-editor.tsx";
+import { OperationNotice } from "./offer-detail.tsx";
 
 type Json = Parameters<typeof CvEditor>[0]["value"];
 
@@ -41,12 +42,15 @@ export function CvPage() {
       .then(show);
   }, [show]);
 
-  // Poll while an import runs. Edits in progress are kept until it ends.
+  // Poll while an import or a suggestion runs. Edits in progress are kept until it ends.
+  const running = (s: CvState | null) =>
+    active(s?.import ?? null) || active(s?.apply ?? null);
   useEffect(() => {
-    if (!active(data?.import ?? null)) return;
+    if (!running(data)) return;
     const timer = setTimeout(async () => {
       const next: CvState = await (await fetch("/api/cv")).json();
-      if (active(next.import)) setData({ ...data!, import: next.import });
+      if (running(next))
+        setData({ ...data!, import: next.import, apply: next.apply });
       else show(next);
     }, POLL_MS);
     return () => clearTimeout(timer);
@@ -117,6 +121,24 @@ export function CvPage() {
         </p>
       )}
       {error && <p className="notice error">{error}</p>}
+      <OperationNotice
+        op={data.apply}
+        what="suggestion"
+        doing="your answer into a new CV version"
+        saved={
+          !!current &&
+          current.origin === "suggestion" &&
+          current.created_at >= (data.apply?.started_at ?? "")
+        }
+      />
+
+      {data.suggestions.length > 0 && (
+        <Suggestions
+          list={data.suggestions}
+          busy={active(data.apply)}
+          call={call}
+        />
+      )}
 
       {!current ? (
         <p className="muted">
@@ -264,6 +286,97 @@ export function CvPage() {
           </table>
         </>
       )}
+    </>
+  );
+}
+
+function Suggestions(props: {
+  list: CvState["suggestions"];
+  busy: boolean;
+  call: (url: string, init?: RequestInit) => Promise<void>;
+}) {
+  const [answering, setAnswering] = useState<number | null>(null);
+  const [answer, setAnswer] = useState("");
+
+  const accept = async (id: number) => {
+    await props.call(`/api/cv/suggestions/${id}/accept`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ answer }),
+    });
+    setAnswering(null);
+    setAnswer("");
+  };
+
+  return (
+    <>
+      <h2>CV suggestions</h2>
+      <p className="muted">
+        From your application kits, most requested first. Accept one by writing
+        what is true. Claude adds only that, as a new version you confirm.
+      </p>
+      <ul className="suggestions">
+        {props.list.map((s) => (
+          <li key={s.id}>
+            <p>
+              <strong>{s.count}×</strong> {s.text}
+              <br />
+              <span className="muted">
+                From{" "}
+                {s.offers.map((o, i) => (
+                  <span key={o.id}>
+                    {i > 0 && ", "}
+                    <a href={`/offers/${o.id}`}>
+                      {o.title}, {o.company}
+                    </a>
+                  </span>
+                ))}
+              </span>
+            </p>
+            {answering === s.id ? (
+              <div className="filters">
+                <textarea
+                  rows={3}
+                  value={answer}
+                  placeholder="What is true, in your words"
+                  onChange={(e) => setAnswer(e.target.value)}
+                />
+                <button
+                  onClick={() => accept(s.id)}
+                  disabled={props.busy || !answer.trim()}
+                >
+                  Add to CV
+                </button>
+                <button className="link" onClick={() => setAnswering(null)}>
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div className="filters">
+                <button
+                  onClick={() => {
+                    setAnswering(s.id);
+                    setAnswer("");
+                  }}
+                  disabled={props.busy}
+                >
+                  Accept
+                </button>
+                <button
+                  className="link"
+                  onClick={() =>
+                    props.call(`/api/cv/suggestions/${s.id}/dismiss`, {
+                      method: "POST",
+                    })
+                  }
+                >
+                  Dismiss
+                </button>
+              </div>
+            )}
+          </li>
+        ))}
+      </ul>
     </>
   );
 }

@@ -6,6 +6,8 @@ import { join } from "node:path";
 import { sampleCv } from "../../cv/sample-cv.ts";
 import { saveCv } from "../../db/cv.ts";
 import { openDb } from "../../db/migrate.ts";
+import { upsertOffers } from "../../db/offers.ts";
+import { createSuggestion } from "../../db/suggestions.ts";
 import { cvRoutes, type CvState } from "./cv.ts";
 
 let db: Database;
@@ -99,4 +101,36 @@ test("an upload that is not a PDF is refused before any import starts", async ()
   expect(db.query("SELECT count(*) AS n FROM operations").get()).toEqual({
     n: 0,
   });
+});
+
+test("open suggestions list their offers, and dismiss or an empty accept act on them", async () => {
+  const [offerId] = upsertOffers(
+    db,
+    [{ source: "indeed", title: "Dev", company: "Acme", location: "Bologna" }],
+    null,
+  ).new;
+  const id = createSuggestion(db, "Add ERP", offerId!);
+  const withId = (init?: RequestInit) =>
+    Object.assign(new Request("http://x", init), {
+      params: { id: String(id) },
+    }) as never;
+
+  const state = (await (await routes["/api/cv"].GET()).json()) as CvState;
+  expect(state.suggestions).toMatchObject([
+    { id, text: "Add ERP", offers: [{ id: offerId, title: "Dev" }] },
+  ]);
+  expect(state.apply).toBeNull();
+
+  const empty = await routes["/api/cv/suggestions/:id/accept"].POST(
+    withId({ ...json, method: "POST", body: JSON.stringify({ answer: " " }) }),
+  );
+  expect(empty.status).toBe(400);
+
+  const r = await routes["/api/cv/suggestions/:id/dismiss"].POST(
+    withId({ method: "POST" }),
+  );
+  expect(((await r.json()) as CvState).suggestions).toEqual([]);
+  expect(
+    (await routes["/api/cv/suggestions/:id/dismiss"].POST(withId())).status,
+  ).toBe(404);
 });

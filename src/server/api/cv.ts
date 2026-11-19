@@ -14,6 +14,13 @@ import {
   overwriteDraft,
   saveCv,
 } from "../../db/cv.ts";
+import { getOffer } from "../../db/offers.ts";
+import {
+  getSuggestion,
+  listSuggestions,
+  resolveSuggestion,
+} from "../../db/suggestions.ts";
+import type { OperationType } from "../../runner/models.ts";
 import { runOperation } from "../../runner/run-claude.ts";
 import type { SearchOperation } from "./runs.ts";
 
@@ -39,13 +46,28 @@ function cvState(db: Database, dataDir: string) {
         : null,
     has_pdf: current ? originalPdfFor(db, current.version) !== null : false,
     versions: listCvVersions(db),
-    import: db
-      .query<SearchOperation, []>(
-        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = 'cv_import' ORDER BY id DESC LIMIT 1",
-      )
-      .get(),
+    import: latestOperation(db, "cv_import"),
+    apply: latestOperation(db, "cv_suggestion"),
+    suggestions: listSuggestions(db, "open").map((s) => ({
+      ...s,
+      offers: s.offer_ids.flatMap((id) => {
+        const o = getOffer(db, id);
+        return o ? [{ id, title: o.title, company: o.company }] : [];
+      }),
+    })),
   };
 }
+
+const latestOperation = (db: Database, type: OperationType) =>
+  db
+    .query<SearchOperation, [OperationType]>(
+      "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = ? ORDER BY id DESC LIMIT 1",
+    )
+    .get(type);
+
+const answerInput = z.strictObject({
+  answer: z.string().trim().min(1).max(2000),
+});
 
 export type CvState = ReturnType<typeof cvState>;
 
@@ -74,6 +96,31 @@ export function cvRoutes(db: Database, dataDir: string) {
         const rel = `data/cv/uploads/${stamp}-${name}`;
         await Bun.write(join(dataDir, "cv/uploads", `${stamp}-${name}`), bytes);
         runOperation(db, "cv_import", { args: [rel] });
+        return state();
+      },
+    },
+
+    "/api/cv/suggestions/:id/dismiss": {
+      POST(req: Bun.BunRequest<"/api/cv/suggestions/:id/dismiss">) {
+        const id = versionParam(req.params.id);
+        if (!id || getSuggestion(db, id)?.status !== "open")
+          return error("no such open suggestion", 404);
+        resolveSuggestion(db, id, "dismissed", null);
+        return state();
+      },
+    },
+
+    // Claude works the answer into the CV and saves an unconfirmed version.
+    "/api/cv/suggestions/:id/accept": {
+      async POST(req: Bun.BunRequest<"/api/cv/suggestions/:id/accept">) {
+        const id = versionParam(req.params.id);
+        if (!id || getSuggestion(db, id)?.status !== "open")
+          return error("no such open suggestion", 404);
+        const input = answerInput.safeParse(await req.json().catch(() => null));
+        if (!input.success) return error("write what is true first");
+        runOperation(db, "cv_suggestion", {
+          args: [String(id), input.data.answer],
+        });
         return state();
       },
     },

@@ -294,7 +294,7 @@ export function OfferDetailPage(props: {
   );
 }
 
-function OperationNotice(props: {
+export function OperationNotice(props: {
   op: SearchOperation | null;
   what: string;
   doing: string;
