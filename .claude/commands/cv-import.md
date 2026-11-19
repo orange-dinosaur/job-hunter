@@ -55,7 +55,7 @@ Import the CV at `$ARGUMENTS` as a new master CV version.
 ```
 
 4. Write the JSON with the Write tool to `data/tmp/cv.json` in this repository. Never use a heredoc or put JSON in the command line: they are refused. Then save it, using the `ref` from step 1:
-   `bun run jh cv:save --origin import --ref <ref> --input data/tmp/cv.json`. `jh` deletes the file once the save succeeds.
+   `bun run jh cv:save --origin import --ref <ref> --input data/tmp/cv.json`. `jh` deletes the file once the save succeeds. Run every command from the repository root and never `cd`.
 5. If the save reports invalid fields, fix those fields and save again.
 6. Reply with the saved version number. Then list every field you left null or empty, and every place where the PDF was hard to read.
 

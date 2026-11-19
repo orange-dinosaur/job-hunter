@@ -5,6 +5,14 @@ import { commandFor, modelFor, type OperationType } from "./models.ts";
 
 const REPO_ROOT = join(import.meta.dir, "../..");
 
+// Absolute, because a `cd` in the session moves what a `./` rule in settings.json
+// points at, and every write to data/tmp/ is then refused.
+export const allowedTools = [
+  "Bash(bun run:*)",
+  "Bash(uv run:*)",
+  `Edit(/${join(REPO_ROOT, "data/tmp")}/**)`,
+];
+
 export interface StartedOperation {
   id: number;
   // True when an operation of the same type for the same offer was already queued or running.
@@ -96,6 +104,8 @@ async function execute(
         model,
         "--output-format",
         "json",
+        "--allowedTools",
+        ...allowedTools,
         "--",
         prompt,
       ],

@@ -186,6 +186,36 @@
         border-color: #dc2626;
         white-space: pre-line;
       }
+      .profile-form {
+        display: grid;
+        gap: 20px;
+        max-width: 640px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+      .field > span:first-child {
+        font-weight: 600;
+      }
+      .field textarea,
+      .field input.place,
+      .field input.salary {
+        font: inherit;
+        width: 100%;
+        max-width: 24em;
+      }
+      .field textarea {
+        max-width: none;
+      }
+      .field td input {
+        width: 4em;
+        text-align: right;
+      }
+      .error-text {
+        color: #dc2626;
+      }
       .suggestions {
         list-style: none;
         padding: 0;

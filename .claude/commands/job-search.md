@@ -4,7 +4,7 @@ description: Run a job search, then score every new offer against the master CV
 
 Run one job search and score its offers. Every `jh` command prints JSON. If a command not listed below as recoverable fails, stop and report its error as it is.
 
-To pass JSON to a `jh` command, write it with the Write tool to a file in `data/tmp/` of this repository, then add `--input data/tmp/<file>` to the command. Never use a heredoc or put JSON in the command line: they are refused. `jh` deletes the file once the command succeeds.
+To pass JSON to a `jh` command, write it with the Write tool to a file in `data/tmp/` of this repository, then add `--input data/tmp/<file>` to the command. Never use a heredoc or put JSON in the command line: they are refused. `jh` deletes the file once the command succeeds. Run every command from the repository root and never `cd`, since these paths are relative to it.
 
 1. Run `bun run jh run:start` and keep the `id` it prints as the run id.
 2. Run `bun run jh profile:show`. If the output has a `note`, stop and show it: the profile is only the example.

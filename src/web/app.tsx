@@ -5,6 +5,7 @@ import { AgentPage } from "./pages/agent.tsx";
 import { CvPage } from "./pages/cv.tsx";
 import { OfferDetailPage } from "./pages/offer-detail.tsx";
 import { OffersPage } from "./pages/offers.tsx";
+import { ProfilePage } from "./pages/profile.tsx";
 
 export function pageTitle(path: string): string {
   if (path === "/") return "Offers";
@@ -46,6 +47,7 @@ function App() {
     );
   else if (title === "AI Agent") page = <AgentPage navigate={navigate} />;
   else if (title === "CV") page = <CvPage />;
+  else if (title === "Search profile") page = <ProfilePage />;
   else
     page = (
       <>

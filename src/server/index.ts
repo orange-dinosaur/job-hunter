@@ -5,6 +5,7 @@ import { agentRoutes } from "./api/agent.ts";
 import { cvRoutes } from "./api/cv.ts";
 import { offerRoutes } from "./api/offer.ts";
 import { offersRoutes } from "./api/offers.ts";
+import { profileRoutes } from "./api/profile.ts";
 import { runsRoutes } from "./api/runs.ts";
 
 const PORT = 4317;
@@ -22,6 +23,7 @@ const server = Bun.serve({
     ...runsRoutes(db),
     ...agentRoutes(db),
     ...cvRoutes(db, DATA_DIR),
+    ...profileRoutes(),
     "/api/*": Response.json({ error: "not found" }, { status: 404 }),
     "/*": index,
   },

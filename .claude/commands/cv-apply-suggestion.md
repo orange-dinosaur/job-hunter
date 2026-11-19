@@ -10,7 +10,7 @@ Every `jh` command prints JSON. If a command fails, stop and report its error as
 1. Run `bun run jh suggestions:list --status open` and find the suggestion with that id. If it is not there, stop and say it is not open.
 2. Run `bun run jh cv:current`.
 3. Change the CV as described below.
-4. Write the whole CV JSON with the Write tool to `data/tmp/cv.json` in this repository. Never use a heredoc or put JSON in the command line: they are refused. Then run `bun run jh cv:save --origin suggestion --ref s<suggestion id> --input data/tmp/cv.json`. It saves a new unconfirmed version and marks the suggestion accepted. If it reports invalid fields, fix them and save again.
+4. Write the whole CV JSON with the Write tool to `data/tmp/cv.json` in this repository. Never use a heredoc or put JSON in the command line: they are refused. Run every command from the repository root and never `cd`. Then run `bun run jh cv:save --origin suggestion --ref s<suggestion id> --input data/tmp/cv.json`. It saves a new unconfirmed version and marks the suggestion accepted. If it reports invalid fields, fix them and save again.
 5. Reply with the new version number and each change as "field: before → after".
 
 ## Changing the CV

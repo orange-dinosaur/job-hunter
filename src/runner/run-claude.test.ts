@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../db/migrate.ts";
-import { runOperation } from "./run-claude.ts";
+import { allowedTools, runOperation } from "./run-claude.ts";
 
 // A fake `claude` on PATH. It records its arguments and the operation id, then
 // behaves as FAKE_CLAUDE_MODE says.
@@ -110,6 +110,8 @@ test("success stores usage, cost and session", async () => {
     "sonnet",
     "--output-format",
     "json",
+    "--allowedTools",
+    ...allowedTools,
     "--",
     "/job-search",
     String(op.id),
@@ -130,7 +132,8 @@ test("the model comes from settings and args follow the command", async () => {
   await op.done;
   const args = readFileSync(argsFile, "utf8").split("\n");
   expect(args[2]).toBe("haiku");
-  expect(args[6]).toBe("/job-prepare o1 en");
+  // The prompt is the last argument, before the operation id and the final newline.
+  expect(args.at(-3)).toBe("/job-prepare o1 en");
   expect(operation(op.id)).toMatchObject({ offer_id: "o1", model: "haiku" });
 });
 

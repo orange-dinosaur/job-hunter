@@ -7,7 +7,7 @@ Prepare an application kit for the offer and language in `$ARGUMENTS`: the first
 
 Every `jh` command prints JSON. If a command fails, stop and report its error as it is, except where a step says how to fix it.
 
-To pass JSON to a `jh` command, write it with the Write tool to a file in `data/tmp/` of this repository, then add `--input data/tmp/<file>` to the command. Never use a heredoc or put JSON in the command line: they are refused. `jh` deletes the file once the command succeeds.
+To pass JSON to a `jh` command, write it with the Write tool to a file in `data/tmp/` of this repository, then add `--input data/tmp/<file>` to the command. Never use a heredoc or put JSON in the command line: they are refused. `jh` deletes the file once the command succeeds. Run every command from the repository root and never `cd`, since these paths are relative to it.
 
 1. Run `bun run jh offers:get --id <offer id>`. Keep its gaps.
 2. Read `data/offers/<offer id>/offer.md`.
