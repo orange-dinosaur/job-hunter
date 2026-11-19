@@ -45,9 +45,50 @@
         color: var(--fg);
         background: var(--line);
       }
+      /* The nav stays put and only main scrolls, so sticky parts of a page stick under it. */
+      #root {
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+      }
+      nav {
+        flex: none;
+      }
       main {
-        padding: 16px;
+        flex: 1;
+        overflow: auto;
+      }
+      .page {
+        padding: 0 16px 16px;
         max-width: 1100px;
+      }
+      /* A page that fills the screen keeps its top part still and scrolls only .table-scroll. */
+      .page:has(> .fill) {
+        height: 100%;
+        box-sizing: border-box;
+      }
+      .fill {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .table-scroll {
+        flex: 1;
+        min-height: 0;
+        overflow: auto;
+      }
+      .table-scroll th {
+        position: sticky;
+        top: 0;
+        background: var(--bg);
+      }
+      .sticky-head {
+        position: sticky;
+        top: 0;
+        z-index: 1;
+        background: var(--bg);
+        border-bottom: 1px solid var(--line);
+        padding-top: 16px;
       }
       .muted {
         color: var(--muted);
@@ -121,8 +162,13 @@
       .num {
         text-align: right;
       }
-      main {
-        overflow-x: auto;
+      .filters input.note {
+        width: 20em;
+      }
+      .offer-text {
+        white-space: pre-wrap;
+        font: inherit;
+        line-height: 1.5;
       }
     </style>
   </head>

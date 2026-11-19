@@ -17,12 +17,20 @@ const active = (op: SearchOperation | null) =>
 const time = (iso: string | null) =>
   iso ? new Date(iso).toLocaleString() : "";
 
+// Kept outside the component so the filters survive a visit to an offer.
+// ponytail: a page reload resets them; move them into the URL if that matters.
+const filters = { minScore: 0, source: "", status: "" };
+
 export function OffersPage(props: { navigate: (path: string) => void }) {
   const [data, setData] = useState<OffersResponse | null>(null);
   const [search, setSearch] = useState<SearchOperation | null>(null);
-  const [minScore, setMinScore] = useState(0);
-  const [source, setSource] = useState("");
-  const [status, setStatus] = useState("");
+  const [minScore, setMinScore] = useState(filters.minScore);
+  const [source, setSource] = useState(filters.source);
+  const [status, setStatus] = useState(filters.status);
+
+  useEffect(() => {
+    Object.assign(filters, { minScore, source, status });
+  }, [minScore, source, status]);
 
   const loadOffers = useCallback(async () => {
     setData(await (await fetch("/api/offers")).json());
@@ -66,7 +74,7 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
   );
 
   return (
-    <>
+    <div className="fill">
       <div className="toolbar">
         <h1>Offers</h1>
         <button onClick={startSearch} disabled={active(search) || !data.has_cv}>
@@ -158,58 +166,60 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
             </span>
           </div>
 
-          <table>
-            <thead>
-              <tr>
-                <th className="num">Score</th>
-                <th>Company</th>
-                <th>Title</th>
-                <th>Locations</th>
-                <th>Sources</th>
-                <th className="num">Gaps</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {shown.map((o) => (
-                <tr key={o.id}>
-                  <td className="num">
-                    {o.dealbreaker ? (
-                      <span className="muted" title={o.dealbreaker}>
-                        excluded
-                      </span>
-                    ) : (
-                      (o.fit_score ?? <span className="muted">unscored</span>)
-                    )}
-                  </td>
-                  <td>{o.company}</td>
-                  <td>
-                    <a
-                      href={`/offers/${o.id}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        props.navigate(`/offers/${o.id}`);
-                      }}
-                    >
-                      {o.title}
-                    </a>
-                  </td>
-                  <td>{o.locations.join("; ")}</td>
-                  <td>{o.sources.join(", ")}</td>
-                  <td className="num">{o.gap_count}</td>
-                  <td>{o.status}</td>
-                  <td>
-                    <button className="link" onClick={() => discard(o.id)}>
-                      Discard
-                    </button>
-                  </td>
+          <div className="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th className="num">Score</th>
+                  <th>Company</th>
+                  <th>Title</th>
+                  <th>Locations</th>
+                  <th>Sources</th>
+                  <th className="num">Gaps</th>
+                  <th>Status</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {shown.map((o) => (
+                  <tr key={o.id}>
+                    <td className="num">
+                      {o.dealbreaker ? (
+                        <span className="muted" title={o.dealbreaker}>
+                          excluded
+                        </span>
+                      ) : (
+                        (o.fit_score ?? <span className="muted">unscored</span>)
+                      )}
+                    </td>
+                    <td>{o.company}</td>
+                    <td>
+                      <a
+                        href={`/offers/${o.id}`}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          props.navigate(`/offers/${o.id}`);
+                        }}
+                      >
+                        {o.title}
+                      </a>
+                    </td>
+                    <td>{o.locations.join("; ")}</td>
+                    <td>{o.sources.join(", ")}</td>
+                    <td className="num">{o.gap_count}</td>
+                    <td>{o.status}</td>
+                    <td>
+                      <button className="link" onClick={() => discard(o.id)}>
+                        Discard
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </>
       )}
-    </>
+    </div>
   );
 }

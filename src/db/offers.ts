@@ -1,15 +1,17 @@
 import type { Database } from "bun:sqlite";
 import { fitScore, type CriterionScore } from "../scoring.ts";
 
-export type OfferStatus =
-  | "new"
-  | "shortlisted"
-  | "prepared"
-  | "applied"
-  | "interview"
-  | "offer_received"
-  | "rejected"
-  | "discarded";
+export const offerStatuses = [
+  "new",
+  "shortlisted",
+  "prepared",
+  "applied",
+  "interview",
+  "offer_received",
+  "rejected",
+  "discarded",
+] as const;
+export type OfferStatus = (typeof offerStatuses)[number];
 
 // One offer as a source returns it, already normalized.
 export interface OfferInput {

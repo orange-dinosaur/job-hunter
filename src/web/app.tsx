@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout } from "./layout.tsx";
+import { OfferDetailPage } from "./pages/offer-detail.tsx";
 import { OffersPage } from "./pages/offers.tsx";
 
 export function pageTitle(path: string): string {
@@ -27,6 +28,7 @@ function App() {
   const navigate = (to: string) => {
     history.pushState(null, "", to);
     setPath(to);
+    document.querySelector("main")?.scrollTo(0, 0);
   };
 
   const title = pageTitle(path);
@@ -34,6 +36,16 @@ function App() {
     return (
       <Layout path={path} navigate={navigate}>
         <OffersPage navigate={navigate} />
+      </Layout>
+    );
+  if (title === "Offer detail")
+    return (
+      <Layout path={path} navigate={navigate}>
+        <OfferDetailPage
+          key={path}
+          id={path.split("/")[2]!}
+          navigate={navigate}
+        />
       </Layout>
     );
   return (

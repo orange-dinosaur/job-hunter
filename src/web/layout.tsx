@@ -39,7 +39,9 @@ export function Layout(props: {
           </a>
         ))}
       </nav>
-      <main>{props.children}</main>
+      <main>
+        <div className="page">{props.children}</div>
+      </main>
     </>
   );
 }
