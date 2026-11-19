@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout } from "./layout.tsx";
+import { OffersPage } from "./pages/offers.tsx";
 
 export function pageTitle(path: string): string {
   if (path === "/") return "Offers";
@@ -29,6 +30,12 @@ function App() {
   };
 
   const title = pageTitle(path);
+  if (title === "Offers")
+    return (
+      <Layout path={path} navigate={navigate}>
+        <OffersPage navigate={navigate} />
+      </Layout>
+    );
   return (
     <Layout path={path} navigate={navigate}>
       <h1>{title}</h1>

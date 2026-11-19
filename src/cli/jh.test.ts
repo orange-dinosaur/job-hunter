@@ -130,7 +130,12 @@ test("offers:list shows the latest run and filters unscored and discarded offers
   setStatus(ctx.db, other, "discarded");
   expect(jh("offers:list --unscored")).toEqual([]);
   expect(jh("offers:list --run 1")).toEqual([
-    expect.objectContaining({ id, fit_score: 68, locations: ["Bologna"] }),
+    expect.objectContaining({
+      id,
+      fit_score: 68,
+      locations: ["Bologna"],
+      gap_count: 1,
+    }),
   ]);
 });
 

@@ -267,6 +267,7 @@ export interface OfferSummary {
   status: OfferStatus;
   fit_score: number | null;
   dealbreaker: string | null;
+  gap_count: number;
 }
 
 // Offers seen in a run, best first. Discarded offers are left out.
@@ -286,7 +287,8 @@ export function listOffers(
       },
       [number]
     >(
-      `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker
+      `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker,
+         (SELECT count(*) FROM offer_gaps g WHERE g.offer_id = offers.id) AS gap_count
        FROM offers WHERE last_seen_run_id = ? AND status != 'discarded' ${unscored}
        ORDER BY fit_score DESC NULLS LAST, created_at`,
     )
