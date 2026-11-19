@@ -70,3 +70,16 @@ export function addOfferToSuggestion(
     suggestion.id,
   ]);
 }
+
+// Closes a suggestion. An accepted one points at the CV version it produced.
+export function resolveSuggestion(
+  db: Database,
+  id: number,
+  status: Exclude<SuggestionStatus, "open">,
+  versionId: number | null,
+): void {
+  db.run(
+    "UPDATE cv_suggestions SET status = ?, resolved_version_id = ? WHERE id = ?",
+    [status, versionId, id],
+  );
+}

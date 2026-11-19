@@ -172,13 +172,13 @@ test("cv:save numbers versions and cv:current returns the newest", () => {
   expect(jh("cv:current")).toBeNull();
   jh("cv:save --origin import --ref original.pdf", sampleCv);
   const second = { ...sampleCv, headline: "Seconda versione" };
-  expect(jh("cv:save --origin suggestion", second)).toMatchObject({
+  expect(jh("cv:save --origin restore --ref v001", second)).toMatchObject({
     version: 2,
     file_path: "cv/versions/v002.json",
   });
   expect(jh("cv:current")).toMatchObject({
     version: 2,
-    origin: "suggestion",
+    origin: "restore",
     confirmed: false,
     cv: second,
   });
@@ -188,6 +188,23 @@ test("cv:save numbers versions and cv:current returns the newest", () => {
   expect(() =>
     jh("cv:save --origin import", { ...sampleCv, headline: "" }),
   ).toThrow("headline");
+});
+
+test("cv:save from a suggestion needs an open one and accepts it", () => {
+  const { id: offerId } = seedOffer();
+  const { id } = jh("suggestions:add", { text: "Add ERP", offer_id: offerId });
+  expect(() => jh("cv:save --origin suggestion", sampleCv)).toThrow("s<id>");
+  expect(() => jh("cv:save --origin suggestion --ref s99", sampleCv)).toThrow(
+    "s<id>",
+  );
+
+  const saved = jh(`cv:save --origin suggestion --ref s${id}`, sampleCv);
+  expect(jh("suggestions:list --status accepted")).toMatchObject([
+    { id, resolved_version_id: saved.id },
+  ]);
+  expect(() =>
+    jh(`cv:save --origin suggestion --ref s${id}`, sampleCv),
+  ).toThrow("open suggestion");
 });
 
 test("cv:original copies a PDF into data/cv/originals and refuses other files", () => {

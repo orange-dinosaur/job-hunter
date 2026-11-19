@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { z } from "zod";
 import { currentCv, saveCv } from "../../db/cv.ts";
+import { getSuggestion, resolveSuggestion } from "../../db/suggestions.ts";
 import { langs, renderCv, type Lang } from "../../cv/render.ts";
 import { masterCvSchema } from "../../cv/schema.ts";
 import {
@@ -69,14 +70,27 @@ export const cvCommands: Record<string, Command> = {
       const origin = requiredFlag(flags, "origin");
       if (!z.enum(origins).safeParse(origin).success)
         throw new CommandError(`--origin must be one of ${origins.join(", ")}`);
+      const ref = typeof flags.ref === "string" ? flags.ref : null;
+      // A suggestion version must name an open suggestion as `s<id>`, which it then closes.
+      let suggestionId: number | null = null;
+      if (origin === "suggestion") {
+        suggestionId = Number(/^s(\d+)$/.exec(ref ?? "")?.[1]);
+        if (getSuggestion(ctx.db, suggestionId)?.status !== "open")
+          throw new CommandError(
+            "--ref must be s<id> of an open suggestion for --origin suggestion",
+          );
+      }
       const cv = readInput(masterCvSchema, stdin);
-      return saveCv(
+      const saved = saveCv(
         ctx.db,
         ctx.dataDir,
         cv,
         origin as (typeof origins)[number],
-        typeof flags.ref === "string" ? flags.ref : null,
+        ref,
       );
+      if (suggestionId !== null)
+        resolveSuggestion(ctx.db, suggestionId, "accepted", saved.id);
+      return saved;
     },
   },
 };
