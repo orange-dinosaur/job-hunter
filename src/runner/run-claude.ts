@@ -28,6 +28,19 @@ interface ClaudeResult {
     cache_creation_input_tokens?: number;
   };
   modelUsage?: Record<string, unknown>;
+  permission_denials?: { tool_name?: string; tool_input?: unknown }[];
+}
+
+// A headless run cannot ask for permission, so a refused tool call usually means
+// the work was not saved, even when Claude ends with a normal reply.
+function refusals(out: ClaudeResult): string | null {
+  const denied = out.permission_denials ?? [];
+  if (!denied.length) return null;
+  const lines = denied.map(
+    (d) =>
+      `- ${d.tool_name ?? "tool"}: ${JSON.stringify(d.tool_input).slice(0, 200)}`,
+  );
+  return `Claude was refused ${denied.length} tool call(s):\n${lines.join("\n")}`;
 }
 
 export function runOperation(
@@ -112,7 +125,8 @@ async function execute(
       return;
     }
 
-    const failed = out.is_error === true || code !== 0;
+    const refused = refusals(out);
+    const failed = out.is_error === true || code !== 0 || refused !== null;
     finish({
       status: failed ? "failed" : "succeeded",
       duration_ms: out.duration_ms ?? Date.now() - started,
@@ -124,7 +138,12 @@ async function execute(
       model_usage: out.modelUsage ? JSON.stringify(out.modelUsage) : null,
       session_id: out.session_id ?? null,
       error: failed
-        ? out.result || out.subtype || `claude exited with code ${code}`
+        ? [
+            refused,
+            out.result || out.subtype || `claude exited with code ${code}`,
+          ]
+            .filter(Boolean)
+            .join("\n\n")
         : null,
     });
   } catch (err) {

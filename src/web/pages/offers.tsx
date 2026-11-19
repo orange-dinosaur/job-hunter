@@ -6,7 +6,7 @@ import type { SearchOperation } from "../../server/api/runs.ts";
 interface OffersResponse {
   has_cv: boolean;
   run: SearchRun | null;
-  offers: OfferSummary[];
+  offers: (OfferSummary & { kits: string[] })[];
 }
 
 const POLL_MS = 3000;
@@ -177,6 +177,7 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                   <th>Sources</th>
                   <th className="num">Gaps</th>
                   <th>Status</th>
+                  <th>Kit</th>
                   <th></th>
                 </tr>
               </thead>
@@ -208,6 +209,7 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                     <td>{o.sources.join(", ")}</td>
                     <td className="num">{o.gap_count}</td>
                     <td>{o.status}</td>
+                    <td>{o.kits.join(", ")}</td>
                     <td>
                       <button className="link" onClick={() => discard(o.id)}>
                         Discard

@@ -1,6 +1,19 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import type { Lang } from "../../cv/render.ts";
 import { offerStatuses } from "../../db/offers.ts";
 import type { OfferDetail } from "../../server/api/offer.ts";
+import type { SearchOperation } from "../../server/api/runs.ts";
+
+// render.ts holds node:fs, so the browser bundle keeps its own copy.
+const langs: readonly Lang[] = ["it", "en"];
+
+const POLL_MS = 3000;
+
+const active = (op: SearchOperation | null) =>
+  op?.status === "queued" || op?.status === "running";
+
+const time = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleString() : "";
 
 export function OfferDetailPage(props: {
   id: string;
@@ -10,34 +23,57 @@ export function OfferDetailPage(props: {
   const [missing, setMissing] = useState(false);
   const [status, setStatus] = useState("");
   const [note, setNote] = useState("");
+  const [lang, setLang] = useState("it");
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const show = (o: OfferDetail) => {
+  const show = useCallback((o: OfferDetail) => {
     setOffer(o);
     setStatus(o.status);
     setNote(o.status_note ?? "");
-  };
+  }, []);
 
   useEffect(() => {
-    fetch(`/api/offers/${props.id}`).then(async (r) =>
-      r.ok ? show(await r.json()) : setMissing(true),
-    );
-  }, [props.id]);
+    fetch(`/api/offers/${props.id}`).then(async (r) => {
+      if (!r.ok) return setMissing(true);
+      const o: OfferDetail = await r.json();
+      show(o);
+      if (langs.some((l) => l === o.language)) setLang(o.language!);
+    });
+  }, [props.id, show]);
+
+  // Poll while a kit is prepared. Status edits in progress are kept until it ends.
+  useEffect(() => {
+    if (!active(offer?.kit_operation ?? null)) return;
+    const timer = setTimeout(async () => {
+      const next: OfferDetail = await (
+        await fetch(`/api/offers/${props.id}`)
+      ).json();
+      if (active(next.kit_operation))
+        setOffer({ ...offer!, kit_operation: next.kit_operation });
+      else show(next);
+    }, POLL_MS);
+    return () => clearTimeout(timer);
+  }, [offer, props.id, show]);
 
   if (missing) return <p className="muted">There is no offer {props.id}.</p>;
   if (!offer) return <p className="muted">Loading…</p>;
 
-  const save = async () => {
+  const post = async (path: string, body: unknown) => {
     setSaveError(null);
-    const r = await fetch(`/api/offers/${props.id}/status`, {
+    const r = await fetch(`/api/offers/${props.id}/${path}`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status, note }),
+      body: JSON.stringify(body),
     });
-    const body = await r.json();
-    if (r.ok) show(body);
-    else setSaveError(body.error);
+    const res = await r.json();
+    if (r.ok) show(res);
+    else setSaveError(res.error);
   };
+
+  const save = () => post("status", { status, note });
+  const prepare = () => post("prepare", { lang });
+  const op = offer.kit_operation;
+  const preparing = active(op);
 
   const changed = status !== offer.status || note !== (offer.status_note ?? "");
   const weights: Record<string, number> = offer.weights;
@@ -104,7 +140,15 @@ export function OfferDetailPage(props: {
           </button>
         </div>
         <div className="filters">
-          <button disabled title="Not available yet">
+          <label>
+            Language{" "}
+            <select value={lang} onChange={(e) => setLang(e.target.value)}>
+              {langs.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
+          </label>
+          <button onClick={prepare} disabled={preparing}>
             Prepare
           </button>
           <button disabled title="Not available yet">
@@ -113,6 +157,62 @@ export function OfferDetailPage(props: {
         </div>
       </div>
       {saveError && <p className="notice error">{saveError}</p>}
+      {preparing && (
+        <p className="notice">
+          Preparing a kit since {time(op!.started_at)}. Claude is writing the
+          tailored CV, the steps and the suggestions. This takes a few minutes.
+        </p>
+      )}
+      {op?.status === "succeeded" &&
+        (offer.kits.length > 0 ? (
+          <p className="notice">
+            Kit ready at {time(op.finished_at)}. It is below.
+          </p>
+        ) : (
+          <p className="notice error">
+            The kit run finished at {time(op.finished_at)} but saved no kit.
+          </p>
+        ))}
+      {op?.status === "failed" && (
+        <p className="notice error">
+          The kit failed at {time(op.finished_at)}: {op.error}
+        </p>
+      )}
+
+      {offer.kits.map((kit) => (
+        <section key={kit.lang}>
+          <h2>Application kit ({kit.lang})</h2>
+          {kit.has_pdf ? (
+            <p>
+              <a
+                href={`/api/offers/${offer.id}/kit/${kit.lang}/cv.pdf`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Tailored CV (PDF)
+              </a>
+            </p>
+          ) : (
+            <p className="muted">The tailored CV was not rendered.</p>
+          )}
+          <h3>Steps to apply</h3>
+          {kit.steps ? (
+            <pre className="offer-text">{kit.steps}</pre>
+          ) : (
+            <p className="muted">No steps saved.</p>
+          )}
+          <h3>CV suggestions</h3>
+          {kit.suggestions.length > 0 ? (
+            <ul>
+              {kit.suggestions.map((s, i) => (
+                <li key={i}>{s.text}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">None for this offer.</p>
+          )}
+        </section>
+      ))}
 
       <h2>
         Fit score{" "}

@@ -7,15 +7,17 @@ Prepare an application kit for the offer and language in `$ARGUMENTS`: the first
 
 Every `jh` command prints JSON. If a command fails, stop and report its error as it is, except where a step says how to fix it.
 
+To pass JSON to a `jh` command, write it with the Write tool to a file in `data/tmp/` of this repository, then add `--input data/tmp/<file>` to the command. Never use a heredoc or put JSON in the command line: they are refused. `jh` deletes the file once the command succeeds.
+
 1. Run `bun run jh offers:get --id <offer id>`. Keep its gaps.
 2. Read `data/offers/<offer id>/offer.md`.
 3. Run `bun run jh cv:current`. If there is no CV, stop and say to run `/cv-import` first.
 4. Run `bun run jh suggestions:list --status open`.
 5. Write the tailored CV, the steps and the suggestions as described below.
-6. Record each suggestion with `bun run jh suggestions:add <<'EOF'`, then the JSON, then `EOF`, and keep the `id` it prints:
+6. Record each suggestion, one at a time, by writing its JSON to `data/tmp/suggestion.json` and running `bun run jh suggestions:add --input data/tmp/suggestion.json`. Keep the `id` it prints. The JSON is:
    - one that matches an open suggestion: `{"id": <its id>, "offer_id": "<offer id>"}`,
    - a new one: `{"text": "...", "offer_id": "<offer id>"}`.
-7. Save the kit with `bun run jh kit:save --id <offer id> --lang <lang> <<'EOF'`, then `{"cv": {...}, "steps": "...", "suggestions": [...]}`, then `EOF`. Keep the `dir` it prints.
+7. Write `{"cv": {...}, "steps": "...", "suggestions": [...]}` to `data/tmp/kit.json` and run `bun run jh kit:save --id <offer id> --lang <lang> --input data/tmp/kit.json`. Keep the `dir` it prints.
 8. Run `bun run jh cv:render --file <dir>/cv.json --lang <lang> --out <dir>/cv.pdf`. If it reports invalid fields, fix them in the CV, save again with step 7, and render again.
 9. Reply with the PDF path, the offer status, what you changed in the CV and why, and the suggestions with whether each was new or matched.
 

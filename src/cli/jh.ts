@@ -1,3 +1,4 @@
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import { parseArgs } from "node:util";
 import { DATA_DIR, openDb } from "../db/migrate.ts";
 import {
@@ -29,6 +30,7 @@ export function helpText(): string {
   return [
     "Usage: bun run jh <command> [flags]",
     "Every command prints JSON. Errors go to stderr with exit code 1.",
+    "Commands that read stdin also take --input <file>, deleted after success.",
     "",
     ...Object.entries(commands).map(
       ([name, c]) => `  ${name.padEnd(width)}  ${c.help}`,
@@ -36,13 +38,28 @@ export function helpText(): string {
   ].join("\n");
 }
 
+const hasInputFlag = (argv: string[]) =>
+  argv.some((a) => a === "--input" || a.startsWith("--input="));
+
+// Commands that read stdin also take `--input <file>`. Headless Claude Code
+// refuses JSON heredocs, so it writes a file instead. The file is deleted once
+// the command succeeds, so a stale one is never read twice.
 export function runCommand(ctx: Context, argv: string[], stdin = ""): unknown {
   const [name, ...rest] = argv;
   const command = name ? commands[name] : undefined;
   if (!command)
     throw new CommandError(`unknown command: ${name}\n\n${helpText()}`);
-  const { values } = parseArgs({ args: rest, options: command.options ?? {} });
-  return command.run(ctx, values as Flags, stdin);
+  const options = {
+    ...command.options,
+    ...(command.stdin && { input: { type: "string" as const } }),
+  };
+  const { values } = parseArgs({ args: rest, options });
+  const { input, ...flags } = values as Flags;
+  if (typeof input !== "string") return command.run(ctx, flags, stdin);
+  if (!existsSync(input)) throw new CommandError(`no file at ${input}`);
+  const result = command.run(ctx, flags, readFileSync(input, "utf8"));
+  rmSync(input);
+  return result;
 }
 
 if (import.meta.main) {
@@ -52,7 +69,10 @@ if (import.meta.main) {
     process.exit(0);
   }
   try {
-    const stdin = commands[argv[0]!]?.stdin ? await Bun.stdin.text() : "";
+    const stdin =
+      commands[argv[0]!]?.stdin && !hasInputFlag(argv)
+        ? await Bun.stdin.text()
+        : "";
     const result = runCommand({ db: openDb(), dataDir: DATA_DIR }, argv, stdin);
     console.log(JSON.stringify(result, null, 2));
   } catch (err) {

@@ -253,3 +253,19 @@ test("kit:save never moves an offer back to prepared", () => {
   const kit = { cv: {}, steps: "x", suggestions: [] };
   expect(jh(`kit:save --id ${id} --lang it`, kit).status).toBe("applied");
 });
+
+test("--input reads the JSON from a file and deletes it only on success", () => {
+  const { id } = seedOffer();
+  const file = join(ctx.dataDir, "in.json");
+
+  writeFileSync(file, JSON.stringify({ text: "", offer_id: id }));
+  expect(() => jh(`suggestions:add --input ${file}`)).toThrow("invalid input");
+  expect(existsSync(file)).toBe(true);
+
+  writeFileSync(file, JSON.stringify({ text: "Add ERP", offer_id: id }));
+  expect(jh(`suggestions:add --input ${file}`).text).toBe("Add ERP");
+  expect(existsSync(file)).toBe(false);
+
+  expect(() => jh(`suggestions:add --input ${file}`)).toThrow("no file at");
+  expect(() => jh(`offers:get --id ${id} --input ${file}`)).toThrow();
+});

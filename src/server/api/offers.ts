@@ -3,6 +3,7 @@ import { currentCv } from "../../db/cv.ts";
 import { DATA_DIR } from "../../db/migrate.ts";
 import { getOffer, listOffers, setStatus } from "../../db/offers.ts";
 import { getRun, latestRunId } from "../../db/runs.ts";
+import { kitLangs } from "./offer.ts";
 
 export function offersRoutes(db: Database) {
   return {
@@ -12,7 +13,10 @@ export function offersRoutes(db: Database) {
         return Response.json({
           has_cv: currentCv(db, DATA_DIR) !== null,
           run: runId == null ? null : getRun(db, runId),
-          offers: runId == null ? [] : listOffers(db, runId),
+          offers: (runId == null ? [] : listOffers(db, runId)).map((o) => ({
+            ...o,
+            kits: kitLangs(DATA_DIR, o.id),
+          })),
         });
       },
     },

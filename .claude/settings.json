@@ -1,5 +1,5 @@
 {
   "permissions": {
-    "allow": ["Bash(bun run:*)", "Bash(uv run:*)"]
+    "allow": ["Bash(bun run:*)", "Bash(uv run:*)", "Edit(./data/tmp/**)"]
   }
 }

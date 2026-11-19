@@ -38,6 +38,13 @@ const errorJson = JSON.stringify({
   result: "The search profile is invalid",
   total_cost_usd: 0.01,
 });
+const deniedJson = JSON.stringify({
+  is_error: false,
+  result: "I could not save the kit.",
+  permission_denials: [
+    { tool_name: "Bash", tool_input: { command: "bun run jh kit:save" } },
+  ],
+});
 writeFileSync(
   join(binDir, "claude"),
   `#!/bin/sh
@@ -46,6 +53,7 @@ echo "$JH_OPERATION_ID" >> "${argsFile}"
 case "$FAKE_CLAUDE_MODE" in
   ok) echo '${okJson}' ;;
   error) echo '${errorJson}'; exit 1 ;;
+  denied) echo '${deniedJson}' ;;
   garbage) echo "not json"; echo "boom" >&2; exit 2 ;;
   slow) sleep 0.3; echo '${okJson}' ;;
 esac
@@ -135,6 +143,17 @@ test("a Claude error marks the operation failed with its message and cost", asyn
     error: "The search profile is invalid",
     cost_usd: 0.01,
   });
+});
+
+test("a refused tool call fails the operation even when Claude ends normally", async () => {
+  process.env.FAKE_CLAUDE_MODE = "denied";
+  const op = runOperation(db, "search_run");
+  await op.done;
+  const row = operation(op.id);
+  expect(row.status).toBe("failed");
+  expect(row.error).toContain("refused 1 tool call(s)");
+  expect(row.error).toContain("bun run jh kit:save");
+  expect(row.error).toContain("I could not save the kit.");
 });
 
 test("output that is not JSON fails with the exit code and stderr", async () => {
