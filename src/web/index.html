@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>job-hunter</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #fafaf9;
+        --fg: #1c1917;
+        --muted: #78716c;
+        --line: #e7e5e4;
+        --accent: #2563eb;
+        font-family: system-ui, sans-serif;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #1c1917;
+          --fg: #f5f5f4;
+          --muted: #a8a29e;
+          --line: #44403c;
+          --accent: #60a5fa;
+        }
+      }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      nav {
+        display: flex;
+        gap: 4px;
+        padding: 8px 16px;
+        border-bottom: 1px solid var(--line);
+        flex-wrap: wrap;
+      }
+      nav a {
+        padding: 6px 10px;
+        border-radius: 6px;
+        color: var(--muted);
+        text-decoration: none;
+      }
+      nav a[aria-current="page"] {
+        color: var(--fg);
+        background: var(--line);
+      }
+      main {
+        padding: 16px;
+        max-width: 1100px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./app.tsx"></script>
+  </body>
+</html>
