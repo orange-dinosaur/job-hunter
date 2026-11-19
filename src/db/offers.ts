@@ -100,6 +100,18 @@ export const now = () => new Date().toISOString().slice(0, 19) + "Z";
 export const addUnique = (list: string[], item: string | null | undefined) =>
   item && !list.includes(item) ? [...list, item] : list;
 
+// The stored offer an input matches, by dedupe key or by URL.
+export function findOffer(db: Database, input: OfferInput) {
+  return db
+    .query<
+      { id: string; sources: string; locations: string },
+      [string, string | null]
+    >(
+      "SELECT id, sources, locations FROM offers WHERE dedupe_key = ? OR url = ?",
+    )
+    .get(dedupeKey(input.company, input.title), input.url ?? null);
+}
+
 // Inserts new offers and merges repeats into the offer already stored.
 // A merge never touches status, so a discarded offer stays discarded.
 export function upsertOffers(
@@ -107,12 +119,6 @@ export function upsertOffers(
   inputs: OfferInput[],
   runId: number | null,
 ): { new: string[]; updated: string[] } {
-  const found = db.query<
-    { id: string; sources: string; locations: string },
-    [string, string | null]
-  >(
-    "SELECT id, sources, locations FROM offers WHERE dedupe_key = ? OR url = ?",
-  );
   const insert = db.query(
     `INSERT INTO offers (id, dedupe_key, url, sources, title, company, locations, remote,
        salary_text, language, posted_at, first_seen_run_id, last_seen_run_id)
@@ -139,7 +145,7 @@ export function upsertOffers(
         posted_at: o.posted_at ?? null,
         run: runId,
       };
-      const existing = found.get(key, fields.url);
+      const existing = findOffer(db, o);
       if (existing) {
         merge.run({
           ...fields,

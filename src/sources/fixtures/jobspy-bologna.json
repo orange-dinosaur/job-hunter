@@ -1,0 +1,97 @@
+[
+  {
+    "site": "indeed",
+    "offers": [
+      {
+        "title": "Software Engineer",
+        "company": "L3Harris",
+        "location": "Bologna, EMI, Italy",
+        "job_url": "https://it.indeed.com/viewjob?jk=b420f8adc2870417",
+        "is_remote": false,
+        "min_amount": 30000.0,
+        "max_amount": 40000.0,
+        "currency": "EUR",
+        "interval": "yearly",
+        "date_posted": "2026-11-12",
+        "description": "L3Harris is dedicated to recruiting and developing high-performing talent who are passionate about what they do. Our employees are unified in a shared dedication to our customers’ mission and quest for professional growth. L3Harris provides an inclusive, engaging environment designed to empower empl"
+      },
+      {
+        "title": "Software Tester",
+        "company": "Enginium srl",
+        "location": "EMI, Italy",
+        "job_url": "https://it.indeed.com/viewjob?jk=0a4b609d4935d873",
+        "is_remote": false,
+        "min_amount": 20000.0,
+        "max_amount": 28000.0,
+        "currency": "EUR",
+        "interval": "yearly",
+        "date_posted": "2026-11-10",
+        "description": "Enginium\n  \n  \nTech. Team. Together.\n  \n  \nDal 2016 lavoriamo per dare forma a una realtà solida e in continua evoluzione, capace di ampliare il proprio impatto e guidare l’innovazione tecnologica. Siamo una società di consulenza ingegneristica e tecnologica che opera con efficacia, trasparenza e re"
+      },
+      {
+        "title": "IT Data Engineer - Microsoft Technologies",
+        "company": "Coesia",
+        "location": "Bologna, EMI, Italy",
+        "job_url": "https://it.indeed.com/viewjob?jk=c6d858060c78668b",
+        "is_remote": false,
+        "min_amount": 40500.0,
+        "max_amount": null,
+        "currency": "EUR",
+        "interval": "yearly",
+        "date_posted": "2026-11-10",
+        "description": null
+      }
+    ],
+    "error": null
+  },
+  {
+    "site": "linkedin",
+    "offers": [],
+    "error": "Software developer in Bologna: response status code 429 (blocked: use a proxy)"
+  },
+  {
+    "site": "glassdoor",
+    "offers": [
+      {
+        "title": "Progettista Software HMI/SCADA",
+        "company": "NonStop Consulting",
+        "location": "Bologna, Italy",
+        "job_url": "https://www.glassdoor.it/job-listing/j?jl=1010326006771",
+        "is_remote": null,
+        "min_amount": null,
+        "max_amount": null,
+        "currency": null,
+        "interval": null,
+        "date_posted": "2026-11-14",
+        "description": "**Progettista Software HMI/SCADA - Bologna**\n============================================\n\n### **Il ruolo**\n\nPer una storica azienda farmaceutica specializzata nell'automazione industriale, cerchiamo un Progettista Software HMI/SCADA da inserire in un contesto tecnico, strutturato e internazionale.\n"
+      },
+      {
+        "title": "Progettista Software SCADA",
+        "company": "NonStop Consulting",
+        "location": "Bologna, Italy",
+        "job_url": "https://www.glassdoor.it/job-listing/j?jl=1010323700360",
+        "is_remote": false,
+        "min_amount": null,
+        "max_amount": null,
+        "currency": null,
+        "interval": null,
+        "date_posted": "2026-11-12",
+        "description": "**Progettista Software HMI/SCADA - Bologna**\n============================================\n\n### **Il ruolo**\n\nPer una **storica azienda farmaceutica** specializzata nell'automazione industriale, cerchiamo un **Progettista Software HMI/SCADA** da inserire in un contesto tecnico, strutturato e **intern"
+      },
+      {
+        "title": "Progettista Software HMI/SCADA",
+        "company": "NonStop Consulting",
+        "location": "Bologna, Italy",
+        "job_url": "https://www.glassdoor.it/job-listing/j?jl=1010319293863",
+        "is_remote": false,
+        "min_amount": null,
+        "max_amount": null,
+        "currency": null,
+        "interval": null,
+        "date_posted": "2026-11-07",
+        "description": "**Progettista Software HMI/SCADA - Bologna**\n============================================\n\n### **Il ruolo**\n\nPer una **storica azienda farmaceutica** specializzata nell'automazione industriale, cerchiamo un **Progettista Software HMI/SCADA** da inserire in un contesto tecnico, strutturato e **intern"
+      }
+    ],
+    "error": null
+  }
+]

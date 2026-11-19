@@ -11,11 +11,13 @@ import { kitCommands } from "./commands/kit.ts";
 import { offersCommands } from "./commands/offers.ts";
 import { profileCommands } from "./commands/profile.ts";
 import { runCommands } from "./commands/run.ts";
+import { sourcesCommands } from "./commands/sources.ts";
 import { suggestionsCommands } from "./commands/suggestions.ts";
 
 export const commands: Record<string, Command> = {
   ...profileCommands,
   ...runCommands,
+  ...sourcesCommands,
   ...offersCommands,
   ...cvCommands,
   ...suggestionsCommands,
