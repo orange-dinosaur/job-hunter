@@ -39,8 +39,9 @@ interface ClaudeResult {
   permission_denials?: { tool_name?: string; tool_input?: unknown }[];
 }
 
-// A headless run cannot ask for permission, so a refused tool call usually means
-// the work was not saved, even when Claude ends with a normal reply.
+// A headless run cannot ask for permission, so refused calls are kept in `error`.
+// They do not fail the run: Claude often recovers, and each page checks for its
+// own saved output instead.
 function refusals(out: ClaudeResult): string | null {
   const denied = out.permission_denials ?? [];
   if (!denied.length) return null;
@@ -136,7 +137,7 @@ async function execute(
     }
 
     const refused = refusals(out);
-    const failed = out.is_error === true || code !== 0 || refused !== null;
+    const failed = out.is_error === true || code !== 0;
     finish({
       status: failed ? "failed" : "succeeded",
       duration_ms: out.duration_ms ?? Date.now() - started,
@@ -154,7 +155,7 @@ async function execute(
           ]
             .filter(Boolean)
             .join("\n\n")
-        : null,
+        : refused,
     });
   } catch (err) {
     finish({

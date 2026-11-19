@@ -148,15 +148,14 @@ test("a Claude error marks the operation failed with its message and cost", asyn
   });
 });
 
-test("a refused tool call fails the operation even when Claude ends normally", async () => {
+test("a refused tool call is kept in error without failing the run", async () => {
   process.env.FAKE_CLAUDE_MODE = "denied";
   const op = runOperation(db, "search_run");
   await op.done;
   const row = operation(op.id);
-  expect(row.status).toBe("failed");
+  expect(row.status).toBe("succeeded");
   expect(row.error).toContain("refused 1 tool call(s)");
   expect(row.error).toContain("bun run jh kit:save");
-  expect(row.error).toContain("I could not save the kit.");
 });
 
 test("output that is not JSON fails with the exit code and stderr", async () => {
