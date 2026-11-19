@@ -1,7 +1,8 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
 import { basename, extname, join } from "node:path";
 import { z } from "zod";
 import { currentCv, saveCv } from "../../db/cv.ts";
+import { langs, renderCv, type Lang } from "../../cv/render.ts";
 import { masterCvSchema } from "../../cv/schema.ts";
 import {
   CommandError,
@@ -39,6 +40,25 @@ export const cvCommands: Record<string, Command> = {
       mkdirSync(join(ctx.dataDir, "cv/originals"), { recursive: true });
       copyFileSync(file, path);
       return { path, ref };
+    },
+  },
+  "cv:render": {
+    help: "Render a CV JSON file to PDF (--file, --lang it|en, --out). Uses data/photo.jpg if present",
+    options: {
+      file: { type: "string" },
+      lang: { type: "string" },
+      out: { type: "string" },
+    },
+    run(ctx, flags) {
+      const file = requiredFlag(flags, "file");
+      const lang = requiredFlag(flags, "lang");
+      const out = requiredFlag(flags, "out");
+      if (!z.enum(langs).safeParse(lang).success)
+        throw new CommandError(`--lang must be one of ${langs.join(", ")}`);
+      if (!existsSync(file)) throw new CommandError(`no file at ${file}`);
+      const cv = readInput(masterCvSchema, readFileSync(file, "utf8"));
+      renderCv(cv, lang as Lang, out, join(ctx.dataDir, "photo.jpg"));
+      return { path: out };
     },
   },
   "cv:save": {
