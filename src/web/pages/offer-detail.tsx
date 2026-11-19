@@ -41,15 +41,21 @@ export function OfferDetailPage(props: {
     });
   }, [props.id, show]);
 
-  // Poll while a kit is prepared. Status edits in progress are kept until it ends.
+  // Poll while a kit or letter runs. Status edits in progress are kept until both end.
+  const running = (o: OfferDetail | null) =>
+    active(o?.kit_operation ?? null) || active(o?.letter_operation ?? null);
   useEffect(() => {
-    if (!active(offer?.kit_operation ?? null)) return;
+    if (!running(offer)) return;
     const timer = setTimeout(async () => {
       const next: OfferDetail = await (
         await fetch(`/api/offers/${props.id}`)
       ).json();
-      if (active(next.kit_operation))
-        setOffer({ ...offer!, kit_operation: next.kit_operation });
+      if (running(next))
+        setOffer({
+          ...next,
+          status: offer!.status,
+          status_note: offer!.status_note,
+        });
       else show(next);
     }, POLL_MS);
     return () => clearTimeout(timer);
@@ -72,8 +78,7 @@ export function OfferDetailPage(props: {
 
   const save = () => post("status", { status, note });
   const prepare = () => post("prepare", { lang });
-  const op = offer.kit_operation;
-  const preparing = active(op);
+  const writeLetter = () => post("cover-letter", { lang });
 
   const changed = status !== offer.status || note !== (offer.status_note ?? "");
   const weights: Record<string, number> = offer.weights;
@@ -148,36 +153,49 @@ export function OfferDetailPage(props: {
               ))}
             </select>
           </label>
-          <button onClick={prepare} disabled={preparing}>
+          <button onClick={prepare} disabled={active(offer.kit_operation)}>
             Prepare
           </button>
-          <button disabled title="Not available yet">
+          <button
+            onClick={writeLetter}
+            disabled={active(offer.letter_operation)}
+          >
             Cover letter
           </button>
         </div>
       </div>
       {saveError && <p className="notice error">{saveError}</p>}
-      {preparing && (
-        <p className="notice">
-          Preparing a kit since {time(op!.started_at)}. Claude is writing the
-          tailored CV, the steps and the suggestions. This takes a few minutes.
-        </p>
-      )}
-      {op?.status === "succeeded" &&
-        (offer.kits.length > 0 ? (
-          <p className="notice">
-            Kit ready at {time(op.finished_at)}. It is below.
+      <OperationNotice
+        op={offer.kit_operation}
+        what="kit"
+        doing="the tailored CV, the steps and the suggestions"
+        saved={offer.kits.length > 0}
+      />
+      <OperationNotice
+        op={offer.letter_operation}
+        what="cover letter"
+        doing="the letter and checking it for AI tells"
+        saved={offer.letters.length > 0}
+      />
+
+      {offer.letters.map((letter) => (
+        <section key={letter.lang}>
+          <h2>Cover letter ({letter.lang})</h2>
+          <p className="filters">
+            {letter.has_pdf && (
+              <a
+                href={`/api/offers/${offer.id}/letter/${letter.lang}/cover-letter.pdf`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Cover letter (PDF)
+              </a>
+            )}
+            <CopyButton text={letter.text} />
           </p>
-        ) : (
-          <p className="notice error">
-            The kit run finished at {time(op.finished_at)} but saved no kit.
-          </p>
-        ))}
-      {op?.status === "failed" && (
-        <p className="notice error">
-          The kit failed at {time(op.finished_at)}: {op.error}
-        </p>
-      )}
+          <pre className="offer-text">{letter.text}</pre>
+        </section>
+      ))}
 
       {offer.kits.map((kit) => (
         <section key={kit.lang}>
@@ -274,4 +292,46 @@ export function OfferDetailPage(props: {
       )}
     </>
   );
+}
+
+function OperationNotice(props: {
+  op: SearchOperation | null;
+  what: string;
+  doing: string;
+  saved: boolean;
+}) {
+  const { op, what } = props;
+  if (!op) return null;
+  if (active(op))
+    return (
+      <p className="notice">
+        Working on the {what} since {time(op.started_at)}. Claude is writing{" "}
+        {props.doing}. This takes a few minutes.
+      </p>
+    );
+  if (op.status === "failed")
+    return (
+      <p className="notice error">
+        The {what} failed at {time(op.finished_at)}: {op.error}
+      </p>
+    );
+  return props.saved ? (
+    <p className="notice">
+      The {what} was ready at {time(op.finished_at)}. It is below.
+    </p>
+  ) : (
+    <p className="notice error">
+      The {what} run finished at {time(op.finished_at)} but saved nothing.
+    </p>
+  );
+}
+
+function CopyButton(props: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = async () => {
+    await navigator.clipboard.writeText(props.text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return <button onClick={copy}>{copied ? "Copied" : "Copy text"}</button>;
 }

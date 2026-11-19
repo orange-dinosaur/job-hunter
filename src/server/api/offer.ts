@@ -6,6 +6,7 @@ import { langs } from "../../cv/render.ts";
 import { DATA_DIR } from "../../db/migrate.ts";
 import { getOffer, offerStatuses, setStatus } from "../../db/offers.ts";
 import { loadProfile } from "../../profile/load.ts";
+import type { OperationType } from "../../runner/models.ts";
 import { runOperation } from "../../runner/run-claude.ts";
 import type { SearchOperation } from "./runs.ts";
 
@@ -14,7 +15,7 @@ const statusInput = z.strictObject({
   note: z.string().nullable(),
 });
 
-const prepareInput = z.strictObject({ lang: z.enum(langs) });
+const langInput = z.strictObject({ lang: z.enum(langs) });
 
 const notFound = () =>
   Response.json({ error: "no such offer" }, { status: 404 });
@@ -41,20 +42,41 @@ function readKit(dataDir: string, id: string, lang: string) {
   };
 }
 
+const letterFile = (dataDir: string, id: string, lang: string, ext: string) =>
+  join(dataDir, "offers", id, `cover-letter-${lang}.${ext}`);
+
+function readLetters(dataDir: string, id: string) {
+  return langs.flatMap((lang) => {
+    const md = letterFile(dataDir, id, lang, "md");
+    if (!existsSync(md)) return [];
+    return [
+      {
+        lang,
+        text: readFileSync(md, "utf8"),
+        has_pdf: existsSync(letterFile(dataDir, id, lang, "pdf")),
+      },
+    ];
+  });
+}
+
 function detail(db: Database, dataDir: string, id: string) {
   const offer = getOffer(db, id);
   if (!offer) return null;
   const file = join(dataDir, "offers", id, "offer.md");
+  const latest = (type: OperationType) =>
+    db
+      .query<SearchOperation, [OperationType, string]>(
+        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = ? AND offer_id = ? ORDER BY id DESC LIMIT 1",
+      )
+      .get(type, id);
   return {
     ...offer,
     text: existsSync(file) ? readFileSync(file, "utf8") : null,
     weights: loadProfile(join(dataDir, "search-profile.yaml")).weights,
     kits: kitLangs(dataDir, id).map((lang) => readKit(dataDir, id, lang)),
-    kit_operation: db
-      .query<SearchOperation, [string]>(
-        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = 'application_kit' AND offer_id = ? ORDER BY id DESC LIMIT 1",
-      )
-      .get(id),
+    kit_operation: latest("application_kit"),
+    letters: readLetters(dataDir, id),
+    letter_operation: latest("cover_letter"),
   };
 }
 
@@ -86,33 +108,52 @@ export function offerRoutes(db: Database, dataDir = DATA_DIR) {
       },
     },
     "/api/offers/:id/prepare": {
-      async POST(req: Bun.BunRequest<"/api/offers/:id/prepare">) {
-        const id = req.params.id;
-        if (!getOffer(db, id)) return notFound();
-        const input = prepareInput.safeParse(
-          await req.json().catch(() => null),
-        );
-        if (!input.success) return badInput(input.error);
-        runOperation(db, "application_kit", {
-          offerId: id,
-          args: [id, input.data.lang],
-        });
-        return Response.json(detail(db, dataDir, id));
-      },
+      POST: (req: Bun.BunRequest<"/api/offers/:id/prepare">) =>
+        start(req, "application_kit"),
+    },
+    "/api/offers/:id/cover-letter": {
+      POST: (req: Bun.BunRequest<"/api/offers/:id/cover-letter">) =>
+        start(req, "cover_letter"),
     },
     "/api/offers/:id/kit/:lang/cv.pdf": {
-      GET(req: Bun.BunRequest<"/api/offers/:id/kit/:lang/cv.pdf">) {
-        const { id, lang } = req.params;
-        // Both checks keep the params from reaching the file path unvetted.
-        if (!getOffer(db, id) || !z.enum(langs).safeParse(lang).success)
-          return notFound();
-        const path = join(kitDir(dataDir, id, lang), "cv.pdf");
-        if (!existsSync(path))
-          return Response.json({ error: "no kit PDF" }, { status: 404 });
-        return new Response(Bun.file(path), {
-          headers: { "content-type": "application/pdf" },
-        });
-      },
+      GET: (req: Bun.BunRequest<"/api/offers/:id/kit/:lang/cv.pdf">) =>
+        pdf(req.params, (id, lang) =>
+          join(kitDir(dataDir, id, lang), "cv.pdf"),
+        ),
+    },
+    "/api/offers/:id/letter/:lang/cover-letter.pdf": {
+      GET: (
+        req: Bun.BunRequest<"/api/offers/:id/letter/:lang/cover-letter.pdf">,
+      ) => pdf(req.params, (id, lang) => letterFile(dataDir, id, lang, "pdf")),
     },
   };
+
+  // Starts a per-offer operation that runs `/<command> <id> <lang>`.
+  async function start(
+    req: Request & { params: { id: string } },
+    type: OperationType,
+  ) {
+    const id = req.params.id;
+    if (!getOffer(db, id)) return notFound();
+    const input = langInput.safeParse(await req.json().catch(() => null));
+    if (!input.success) return badInput(input.error);
+    runOperation(db, type, { offerId: id, args: [id, input.data.lang] });
+    return Response.json(detail(db, dataDir, id));
+  }
+
+  function pdf(
+    params: { id: string; lang: string },
+    path: (id: string, lang: string) => string,
+  ) {
+    const { id, lang } = params;
+    // Both checks keep the params from reaching the file path unvetted.
+    if (!getOffer(db, id) || !z.enum(langs).safeParse(lang).success)
+      return notFound();
+    const file = path(id, lang);
+    if (!existsSync(file))
+      return Response.json({ error: "no PDF" }, { status: 404 });
+    return new Response(Bun.file(file), {
+      headers: { "content-type": "application/pdf" },
+    });
+  }
 }

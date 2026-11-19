@@ -70,6 +70,24 @@ test("a saved kit shows on the offer and its PDF is served", async () => {
   expect((await call(pdf, { id, lang: "../../x" })).status).toBe(404);
 });
 
+test("a saved cover letter shows its text and its PDF is served", async () => {
+  const dir = join(dataDir, "offers", id);
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, "cover-letter-it.md"), "Buongiorno,\n");
+  writeFileSync(join(dir, "cover-letter-it.pdf"), "%PDF-1.4");
+
+  const r = await call(routes["/api/offers/:id"].GET, { id });
+  const offer = (await r.json()) as OfferDetail;
+  expect(offer.letters).toEqual([
+    { lang: "it", text: "Buongiorno,\n", has_pdf: true },
+  ]);
+  expect(offer.letter_operation).toBeNull();
+
+  const pdf = routes["/api/offers/:id/letter/:lang/cover-letter.pdf"].GET;
+  expect((await call(pdf, { id, lang: "it" })).status).toBe(200);
+  expect((await call(pdf, { id, lang: "en" })).status).toBe(404);
+});
+
 test("prepare rejects a language other than it or en", async () => {
   const r = await call(
     routes["/api/offers/:id/prepare"].POST,
