@@ -2,7 +2,7 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { cvView, renderCv } from "./render.ts";
+import { cvView, letterView, renderCv, renderLetter } from "./render.ts";
 import { sampleCv } from "./sample-cv.ts";
 
 test("cvView groups consecutive roles at one company and formats dates", () => {
@@ -64,6 +64,62 @@ test("renderCv writes a PDF whose text reads in layout order", () => {
       return false;
     });
     expect(missing).toEqual([]);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}, 60_000);
+
+test("letterView splits paragraphs and dates the letter in the language", () => {
+  const view = letterView(
+    sampleCv.personal,
+    { title: "Dev", company: "Acme" },
+    "Gentili,\n\nUno.\n  \nCordiali saluti,\nMario Rossi\n",
+    "it",
+    new Date("2026-11-19T12:00:00Z"),
+  );
+  expect(view.subject).toBe("Oggetto: candidatura per Dev");
+  expect(view.date).toBe("19 novembre 2026");
+  expect(view.paragraphs).toEqual([
+    "Gentili,",
+    "Uno.",
+    "Cordiali saluti,\nMario Rossi",
+  ]);
+});
+
+test("renderLetter writes a PDF with the header, subject and body in order", () => {
+  const dir = mkdtempSync(join(tmpdir(), "jh-letter-"));
+  try {
+    const out = join(dir, "letter.pdf");
+    const view = letterView(
+      sampleCv.personal,
+      { title: "Dev", company: "Acme" },
+      "Dear hiring team,\n\nI built APIs.\n\nKind regards,\nMario Rossi",
+      "en",
+    );
+    renderLetter(view, out);
+    const proc = Bun.spawnSync([
+      "uv",
+      "run",
+      "--quiet",
+      "--with",
+      "pypdf",
+      "python",
+      "-I",
+      "-c",
+      "import sys,pypdf; print(pypdf.PdfReader(sys.argv[1]).pages[0].extract_text())",
+      out,
+    ]);
+    const text = proc.stdout.toString();
+    const order = [
+      "Mario Rossi",
+      "Acme",
+      "Application for Dev",
+      "Dear hiring team,",
+      "I built APIs.",
+      "Kind regards,",
+    ].map((s) => text.indexOf(s));
+    expect(order).not.toContain(-1);
+    expect(order).toEqual([...order].sort((a, b) => a - b));
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }

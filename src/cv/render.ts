@@ -12,7 +12,6 @@ import type { MasterCv } from "./schema.ts";
 export const langs = ["it", "en"] as const;
 export type Lang = (typeof langs)[number];
 
-const TEMPLATE = join(import.meta.dir, "cv.typ");
 const FONTS = join(import.meta.dir, "fonts");
 const SCRIPT = join(import.meta.dir, "../../scripts/typst_render.py");
 
@@ -121,21 +120,62 @@ export function renderCv(
   out: string,
   photo: string | null,
 ): void {
-  const dir = mkdtempSync(join(tmpdir(), "jh-cv-"));
+  const hasPhoto = photo !== null && existsSync(photo);
+  compile("cv.typ", cvView(cv, lang, hasPhoto), out, hasPhoto ? photo : null);
+}
+
+const letterLabels = {
+  it: { subject: "Oggetto: candidatura per", locale: "it-IT" },
+  en: { subject: "Application for", locale: "en-GB" },
+} satisfies Record<Lang, Record<string, string>>;
+
+// What letter.typ reads. Paragraphs are split on blank lines of the text.
+export function letterView(
+  personal: MasterCv["personal"],
+  offer: { title: string; company: string },
+  text: string,
+  lang: Lang,
+  date = new Date(),
+) {
+  const l = letterLabels[lang];
+  return {
+    lang,
+    personal,
+    company: offer.company,
+    subject: `${l.subject} ${offer.title}`,
+    date: new Intl.DateTimeFormat(l.locale, { dateStyle: "long" }).format(date),
+    paragraphs: text
+      .trim()
+      .split(/\n\s*\n/)
+      .map((p) => p.trim()),
+  };
+}
+
+export function renderLetter(
+  view: ReturnType<typeof letterView>,
+  out: string,
+): void {
+  compile("letter.typ", view, out, null);
+}
+
+// Compiles a template from this folder with `view` as view.json next to it.
+function compile(
+  template: string,
+  view: unknown,
+  out: string,
+  photo: string | null,
+): void {
+  const dir = mkdtempSync(join(tmpdir(), "jh-typst-"));
   try {
-    const hasPhoto = photo !== null && existsSync(photo);
-    if (hasPhoto) copyFileSync(photo, join(dir, "photo.jpg"));
-    copyFileSync(TEMPLATE, join(dir, "cv.typ"));
-    writeFileSync(
-      join(dir, "view.json"),
-      JSON.stringify(cvView(cv, lang, hasPhoto)),
-    );
+    if (photo) copyFileSync(photo, join(dir, "photo.jpg"));
+    copyFileSync(join(import.meta.dir, template), join(dir, template));
+    writeFileSync(join(dir, "view.json"), JSON.stringify(view));
     const proc = Bun.spawnSync([
       "uv",
       "run",
       "--script",
       SCRIPT,
-      join(dir, "cv.typ"),
+      join(dir, template),
       resolve(out),
       FONTS,
     ]);
