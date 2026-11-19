@@ -10,6 +10,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../db/migrate.ts";
 import { setStatus } from "../db/offers.ts";
+import { sampleCv } from "../cv/sample-cv.ts";
 import type { Context } from "./command.ts";
 import { commands, helpText, runCommand } from "./jh.ts";
 
@@ -164,10 +165,9 @@ test("scores:set uses the profile weights and rejects unknown criteria", () => {
 
 test("cv:save numbers versions and cv:current returns the newest", () => {
   expect(jh("cv:current")).toBeNull();
-  jh("cv:save --origin import --ref original.pdf", { headline: "first" });
-  expect(
-    jh("cv:save --origin suggestion", { headline: "second" }),
-  ).toMatchObject({
+  jh("cv:save --origin import --ref original.pdf", sampleCv);
+  const second = { ...sampleCv, headline: "Seconda versione" };
+  expect(jh("cv:save --origin suggestion", second)).toMatchObject({
     version: 2,
     file_path: "cv/versions/v002.json",
   });
@@ -175,11 +175,27 @@ test("cv:save numbers versions and cv:current returns the newest", () => {
     version: 2,
     origin: "suggestion",
     confirmed: false,
-    cv: { headline: "second" },
+    cv: second,
   });
-  expect(() => jh("cv:save --origin magic", {})).toThrow(
+  expect(() => jh("cv:save --origin magic", sampleCv)).toThrow(
     "--origin must be one of",
   );
+  expect(() =>
+    jh("cv:save --origin import", { ...sampleCv, headline: "" }),
+  ).toThrow("headline");
+});
+
+test("cv:original copies a PDF into data/cv/originals and refuses other files", () => {
+  const pdf = join(ctx.dataDir, "my cv.pdf");
+  writeFileSync(pdf, "%PDF-1.7");
+  const { path, ref } = runCommand(ctx, ["cv:original", "--file", pdf]) as {
+    path: string;
+    ref: string;
+  };
+  expect(ref).toMatch(/^cv\/originals\/\d{8}-\d{6}-my cv\.pdf$/);
+  expect(readFileSync(path, "utf8")).toBe("%PDF-1.7");
+  expect(() => jh("cv:original --file cv.docx")).toThrow("only PDF files");
+  expect(() => jh("cv:original --file missing.pdf")).toThrow("no file at");
 });
 
 test("suggestions:add creates, then counts each offer once", () => {
