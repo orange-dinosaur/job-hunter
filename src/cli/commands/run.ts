@@ -13,7 +13,9 @@ export const runCommands: Record<string, Command> = {
   "run:start": {
     help: "Start a search run and print its id",
     run(ctx) {
-      return { id: startRun(ctx.db) };
+      // Set by the runner when the dashboard started this search.
+      const operationId = Number(process.env.JH_OPERATION_ID) || null;
+      return { id: startRun(ctx.db, operationId) };
     },
   },
   "run:finish": {

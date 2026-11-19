@@ -18,9 +18,13 @@ export interface SearchRun {
   offers_new: number;
 }
 
-export function startRun(db: Database): number {
+export function startRun(
+  db: Database,
+  operationId: number | null = null,
+): number {
   return Number(
-    db.run("INSERT INTO search_runs DEFAULT VALUES").lastInsertRowid,
+    db.run("INSERT INTO search_runs (operation_id) VALUES (?)", [operationId])
+      .lastInsertRowid,
   );
 }
 
