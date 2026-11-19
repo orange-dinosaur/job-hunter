@@ -3,7 +3,8 @@ import { mkdirSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { migrations } from "./schema.ts";
 
-export const DEFAULT_DB_PATH = join(import.meta.dir, "../../data/jobs.db");
+export const DATA_DIR = join(import.meta.dir, "../../data");
+export const DEFAULT_DB_PATH = join(DATA_DIR, "jobs.db");
 
 // Opens the database and brings its schema up to date.
 export function openDb(path = DEFAULT_DB_PATH): Database {

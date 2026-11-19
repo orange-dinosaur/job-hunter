@@ -95,9 +95,9 @@ export function dedupeKey(company: string, title: string): string {
   return `${words.join(" ")}|${normalize(title).join(" ")}`;
 }
 
-const now = () => new Date().toISOString().slice(0, 19) + "Z";
+export const now = () => new Date().toISOString().slice(0, 19) + "Z";
 
-const addUnique = (list: string[], item: string | null | undefined) =>
+export const addUnique = (list: string[], item: string | null | undefined) =>
   item && !list.includes(item) ? [...list, item] : list;
 
 // Inserts new offers and merges repeats into the offer already stored.
@@ -242,4 +242,52 @@ export function setStatus(
     "UPDATE offers SET status = ?, status_note = ?, updated_at = ? WHERE id = ?",
     [status, note, now(), id],
   );
+}
+
+// Creating a kit moves an offer forward to `prepared`, never back.
+export function markPrepared(db: Database, id: string): void {
+  db.run(
+    "UPDATE offers SET status = 'prepared', updated_at = ? WHERE id = ? AND status IN ('new', 'shortlisted')",
+    [now(), id],
+  );
+}
+
+export interface OfferSummary {
+  id: string;
+  title: string;
+  company: string;
+  locations: string[];
+  sources: string[];
+  status: OfferStatus;
+  fit_score: number | null;
+  dealbreaker: string | null;
+}
+
+// Offers seen in a run, best first. Discarded offers are left out.
+export function listOffers(
+  db: Database,
+  runId: number,
+  unscoredOnly = false,
+): OfferSummary[] {
+  const unscored = unscoredOnly
+    ? "AND dealbreaker IS NULL AND NOT EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)"
+    : "";
+  return db
+    .query<
+      Omit<OfferSummary, "locations" | "sources"> & {
+        locations: string;
+        sources: string;
+      },
+      [number]
+    >(
+      `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker
+       FROM offers WHERE last_seen_run_id = ? AND status != 'discarded' ${unscored}
+       ORDER BY fit_score DESC NULLS LAST, created_at`,
+    )
+    .all(runId)
+    .map((o) => ({
+      ...o,
+      locations: JSON.parse(o.locations),
+      sources: JSON.parse(o.sources),
+    }));
 }
