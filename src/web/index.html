@@ -82,6 +82,53 @@
         top: 0;
         background: var(--bg);
       }
+      .cv-split {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+        gap: 16px;
+        align-items: start;
+      }
+      .cv-split iframe {
+        position: sticky;
+        top: 0;
+        width: 100%;
+        height: calc(100dvh - 80px);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+      }
+      .cv-fields {
+        display: grid;
+        gap: 8px;
+      }
+      .cv-field {
+        display: grid;
+        gap: 2px;
+      }
+      .cv-list {
+        display: grid;
+        gap: 6px;
+      }
+      .cv-item {
+        border-left: 2px solid var(--line);
+        padding-left: 10px;
+      }
+      .cv-split input,
+      .cv-split textarea {
+        font: inherit;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 4px 6px;
+        border: 1px solid var(--line);
+        border-radius: 4px;
+        background: var(--bg);
+        color: var(--fg);
+      }
+      .cv-split textarea {
+        resize: vertical;
+      }
+      details.notice summary {
+        cursor: pointer;
+      }
       table.narrow {
         width: auto;
       }

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout } from "./layout.tsx";
 import { AgentPage } from "./pages/agent.tsx";
+import { CvPage } from "./pages/cv.tsx";
 import { OfferDetailPage } from "./pages/offer-detail.tsx";
 import { OffersPage } from "./pages/offers.tsx";
 
@@ -44,6 +45,7 @@ function App() {
       />
     );
   else if (title === "AI Agent") page = <AgentPage navigate={navigate} />;
+  else if (title === "CV") page = <CvPage />;
   else
     page = (
       <>
