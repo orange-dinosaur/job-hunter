@@ -18,7 +18,9 @@ export function openDb(path = DEFAULT_DB_PATH): Database {
 }
 
 export function migrate(db: Database): void {
-  const { user_version } = db.query("PRAGMA user_version").get() as { user_version: number };
+  const { user_version } = db.query("PRAGMA user_version").get() as {
+    user_version: number;
+  };
   for (let v = user_version; v < migrations.length; v++) {
     db.transaction(() => {
       db.run(migrations[v]!);

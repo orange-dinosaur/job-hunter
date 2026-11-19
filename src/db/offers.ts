@@ -57,8 +57,26 @@ export interface OfferScoring {
 }
 
 const LEGAL_SUFFIXES = new Set([
-  "srl", "srls", "spa", "sas", "snc", "sapa", "scarl", "scrl", "coop",
-  "ltd", "limited", "llc", "inc", "corp", "plc", "gmbh", "ag", "bv", "sa", "sarl",
+  "srl",
+  "srls",
+  "spa",
+  "sas",
+  "snc",
+  "sapa",
+  "scarl",
+  "scrl",
+  "coop",
+  "ltd",
+  "limited",
+  "llc",
+  "inc",
+  "corp",
+  "plc",
+  "gmbh",
+  "ag",
+  "bv",
+  "sa",
+  "sarl",
 ]);
 
 function normalize(text: string): string[] {
@@ -89,7 +107,10 @@ export function upsertOffers(
   inputs: OfferInput[],
   runId: number | null,
 ): { new: string[]; updated: string[] } {
-  const found = db.query<{ id: string; sources: string; locations: string }, [string, string | null]>(
+  const found = db.query<
+    { id: string; sources: string; locations: string },
+    [string, string | null]
+  >(
     "SELECT id, sources, locations FROM offers WHERE dedupe_key = ? OR url = ?",
   );
   const insert = db.query(
@@ -123,11 +144,18 @@ export function upsertOffers(
         merge.run({
           ...fields,
           id: existing.id,
-          sources: JSON.stringify(addUnique(JSON.parse(existing.sources), o.source)),
-          locations: JSON.stringify(addUnique(JSON.parse(existing.locations), o.location)),
+          sources: JSON.stringify(
+            addUnique(JSON.parse(existing.sources), o.source),
+          ),
+          locations: JSON.stringify(
+            addUnique(JSON.parse(existing.locations), o.location),
+          ),
           now: now(),
         });
-        if (!result.new.includes(existing.id) && !result.updated.includes(existing.id))
+        if (
+          !result.new.includes(existing.id) &&
+          !result.updated.includes(existing.id)
+        )
           result.updated.push(existing.id);
       } else {
         const id = crypto.randomUUID().slice(0, 8);
@@ -157,7 +185,9 @@ export function getOffer(
   db: Database,
   id: string,
 ): (Offer & { scores: ScoredCriterion[]; gaps: string[] }) | null {
-  const row = db.query<OfferRow, [string]>("SELECT * FROM offers WHERE id = ?").get(id);
+  const row = db
+    .query<OfferRow, [string]>("SELECT * FROM offers WHERE id = ?")
+    .get(id);
   if (!row) return null;
   const scores = db
     .query<ScoredCriterion, [string]>(
@@ -165,7 +195,9 @@ export function getOffer(
     )
     .all(id);
   const gaps = db
-    .query<{ text: string }, [string]>("SELECT text FROM offer_gaps WHERE offer_id = ? ORDER BY rowid")
+    .query<{ text: string }, [string]>(
+      "SELECT text FROM offer_gaps WHERE offer_id = ? ORDER BY rowid",
+    )
     .all(id)
     .map((g) => g.text);
   return {
@@ -189,23 +221,25 @@ export function setScores(
     db.run("DELETE FROM offer_scores WHERE offer_id = ?", [id]);
     db.run("DELETE FROM offer_gaps WHERE offer_id = ?", [id]);
     const score = db.query("INSERT INTO offer_scores VALUES (?, ?, ?, ?)");
-    for (const s of scoring.scores) score.run(id, s.criterion, s.score, s.reason);
+    for (const s of scoring.scores)
+      score.run(id, s.criterion, s.score, s.reason);
     const gap = db.query("INSERT INTO offer_gaps VALUES (?, ?)");
     for (const g of scoring.gaps) gap.run(id, g);
-    db.run("UPDATE offers SET fit_score = ?, dealbreaker = ?, updated_at = ? WHERE id = ?", [
-      fitScore(scoring.scores, weights),
-      scoring.dealbreaker,
-      now(),
-      id,
-    ]);
+    db.run(
+      "UPDATE offers SET fit_score = ?, dealbreaker = ?, updated_at = ? WHERE id = ?",
+      [fitScore(scoring.scores, weights), scoring.dealbreaker, now(), id],
+    );
   })();
 }
 
-export function setStatus(db: Database, id: string, status: OfferStatus, note: string | null = null): void {
-  db.run("UPDATE offers SET status = ?, status_note = ?, updated_at = ? WHERE id = ?", [
-    status,
-    note,
-    now(),
-    id,
-  ]);
+export function setStatus(
+  db: Database,
+  id: string,
+  status: OfferStatus,
+  note: string | null = null,
+): void {
+  db.run(
+    "UPDATE offers SET status = ?, status_note = ?, updated_at = ? WHERE id = ?",
+    [status, note, now(), id],
+  );
 }

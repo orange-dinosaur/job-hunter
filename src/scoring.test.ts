@@ -1,7 +1,13 @@
 import { expect, test } from "bun:test";
 import { fitScore } from "./scoring.ts";
 
-const weights = { skills: 35, experience: 25, domain: 15, location: 15, salary: 10 };
+const weights = {
+  skills: 35,
+  experience: 25,
+  domain: 15,
+  location: 15,
+  salary: 10,
+};
 
 test("weighted sum of all criteria", () => {
   const scores = [

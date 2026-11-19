@@ -1,1 +1,40 @@
-# Copy to search-profile.yaml and fill in. The fields are defined later.
+# Copy to data/search-profile.yaml and edit. `bun run jh profile:check` validates it.
+
+# Job titles to search for.
+roles:
+  - Software developer
+  - Backend developer
+
+# A place with a search radius in km, or the word remote.
+locations:
+  - place: Bologna
+    radius_km: 30
+  - remote
+
+# Lowest acceptable yearly gross salary in EUR. Leave empty for no floor.
+salary_floor: 35000
+
+contract_types:
+  - permanent
+  - fixed-term
+
+# Two-letter codes of the languages an offer may be written in.
+languages:
+  - it
+  - en
+
+excluded_companies: []
+excluded_sectors:
+  - gambling
+
+# How much each criterion counts in the fit score. Must sum to 100.
+weights:
+  skills: 35
+  experience: 25
+  domain: 15
+  location: 15
+  salary: 10
+
+# Rules that exclude an offer outright instead of lowering its score.
+dealbreakers:
+  - relocation outside Italy
