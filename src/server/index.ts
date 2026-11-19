@@ -1,6 +1,7 @@
 import type { Database } from "bun:sqlite";
 import { openDb } from "../db/migrate.ts";
 import index from "../web/index.html";
+import { agentRoutes } from "./api/agent.ts";
 import { offerRoutes } from "./api/offer.ts";
 import { offersRoutes } from "./api/offers.ts";
 import { runsRoutes } from "./api/runs.ts";
@@ -18,6 +19,7 @@ const server = Bun.serve({
     ...offersRoutes(db),
     ...offerRoutes(db),
     ...runsRoutes(db),
+    ...agentRoutes(db),
     "/api/*": Response.json({ error: "not found" }, { status: 404 }),
     "/*": index,
   },

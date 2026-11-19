@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout } from "./layout.tsx";
+import { AgentPage } from "./pages/agent.tsx";
 import { OfferDetailPage } from "./pages/offer-detail.tsx";
 import { OffersPage } from "./pages/offers.tsx";
 
@@ -32,30 +33,32 @@ function App() {
   };
 
   const title = pageTitle(path);
-  if (title === "Offers")
-    return (
-      <Layout path={path} navigate={navigate}>
-        <OffersPage navigate={navigate} />
-      </Layout>
+  let page;
+  if (title === "Offers") page = <OffersPage navigate={navigate} />;
+  else if (title === "Offer detail")
+    page = (
+      <OfferDetailPage
+        key={path}
+        id={path.split("/")[2]!}
+        navigate={navigate}
+      />
     );
-  if (title === "Offer detail")
-    return (
-      <Layout path={path} navigate={navigate}>
-        <OfferDetailPage
-          key={path}
-          id={path.split("/")[2]!}
-          navigate={navigate}
-        />
-      </Layout>
+  else if (title === "AI Agent") page = <AgentPage navigate={navigate} />;
+  else
+    page = (
+      <>
+        <h1>{title}</h1>
+        <p className="muted">
+          {title === "Page not found"
+            ? `Nothing at ${path}.`
+            : "This page is not built yet."}
+        </p>
+      </>
     );
+
   return (
     <Layout path={path} navigate={navigate}>
-      <h1>{title}</h1>
-      <p className="muted">
-        {title === "Page not found"
-          ? `Nothing at ${path}.`
-          : "This page is not built yet."}
-      </p>
+      {page}
     </Layout>
   );
 }

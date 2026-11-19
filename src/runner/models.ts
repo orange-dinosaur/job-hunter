@@ -26,6 +26,9 @@ export const defaultModels: Record<OperationType, string> = {
   cv_suggestion: "sonnet",
 };
 
+// Aliases `claude --model` accepts.
+export const modelChoices = ["haiku", "sonnet", "opus"] as const;
+
 export const modelSettingKey = (type: OperationType) => `model.${type}`;
 
 export function modelFor(db: Database, type: OperationType): string {
