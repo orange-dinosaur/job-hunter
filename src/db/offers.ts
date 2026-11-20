@@ -91,10 +91,14 @@ function normalize(text: string): string[] {
     .filter(Boolean);
 }
 
-export function dedupeKey(company: string, title: string): string {
-  const words = normalize(company);
+export function companyKey(name: string): string {
+  const words = normalize(name);
   while (words.length > 1 && LEGAL_SUFFIXES.has(words.at(-1)!)) words.pop();
-  return `${words.join(" ")}|${normalize(title).join(" ")}`;
+  return words.join(" ");
+}
+
+export function dedupeKey(company: string, title: string): string {
+  return `${companyKey(company)}|${normalize(title).join(" ")}`;
 }
 
 export const now = () => new Date().toISOString().slice(0, 19) + "Z";

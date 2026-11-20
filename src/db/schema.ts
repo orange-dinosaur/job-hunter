@@ -97,4 +97,24 @@ export const migrations: string[] = [
     value TEXT NOT NULL
   );
   `,
+  `
+  CREATE TABLE companies (
+    key TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    sector TEXT CHECK (sector IN ('it_software', 'manufacturing', 'consulting',
+      'public_administration', 'banking_insurance', 'utilities_energy',
+      'retail_consumer', 'healthcare', 'logistics', 'other')),
+    size TEXT CHECK (size IN ('startup', 'sme', 'large', 'unknown')),
+    kind TEXT CHECK (kind IN ('end_client', 'it_consultancy', 'staffing_agency',
+      'public_body', 'unknown')),
+    town TEXT,
+    website TEXT,
+    careers_url TEXT,
+    reason TEXT,
+    origin TEXT NOT NULL CHECK (origin IN ('offer', 'search')),
+    watched INTEGER NOT NULL DEFAULT 0 CHECK (watched IN (0, 1)),
+    created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+    updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  );
+  `,
 ];

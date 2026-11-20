@@ -8,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { getCompany } from "../db/companies.ts";
 import { openDb } from "../db/migrate.ts";
 import { setStatus } from "../db/offers.ts";
 import { sampleCv } from "../cv/sample-cv.ts";
@@ -168,6 +169,23 @@ test("scores:set uses the profile weights and rejects unknown criteria", () => {
       scores: [{ criterion: "vibes", score: 1, reason: "x" }],
     }),
   ).toThrow("scores.0.criterion");
+});
+
+test("scores:set stores the company fields it is given", () => {
+  jh("profile:show");
+  const { id } = seedOffer();
+  const company = { sector: "it_software", size: "sme", kind: "end_client" };
+  jh(`scores:set --id ${id}`, { ...scoring, company });
+  expect(getCompany(ctx.db, "Acme")).toMatchObject({
+    ...company,
+    origin: "offer",
+  });
+  expect(() =>
+    jh(`scores:set --id ${id}`, {
+      ...scoring,
+      company: { ...company, size: "huge" },
+    }),
+  ).toThrow("company.size");
 });
 
 test("cv:save numbers versions and cv:current returns the newest", () => {

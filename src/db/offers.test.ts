@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test";
 import { migrate, openDb } from "./migrate.ts";
+import { migrations } from "./schema.ts";
 import {
   dedupeKey,
   getOffer,
@@ -32,7 +33,9 @@ test("dedupe key strips accents, case, punctuation and legal suffixes", () => {
 test("migrations are idempotent", () => {
   const { db } = setup();
   migrate(db);
-  expect(db.query("PRAGMA user_version").get()).toEqual({ user_version: 1 });
+  expect(db.query("PRAGMA user_version").get()).toEqual({
+    user_version: migrations.length,
+  });
 });
 
 test("insert stores a new offer", () => {

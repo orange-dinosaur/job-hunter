@@ -1,5 +1,11 @@
 import { z } from "zod";
 import {
+  kinds,
+  sectors,
+  sizes,
+  upsertCompanyFromOffer,
+} from "../../db/companies.ts";
+import {
   getOffer,
   listOffers,
   refitScores,
@@ -42,6 +48,13 @@ const scoresInput = z.strictObject({
   ),
   gaps: z.array(z.string().min(1)),
   dealbreaker: z.string().min(1).nullable(),
+  company: z
+    .strictObject({
+      sector: z.enum(sectors),
+      size: z.enum(sizes),
+      kind: z.enum(kinds),
+    })
+    .optional(),
 });
 
 export const offersCommands: Record<string, Command> = {
@@ -85,9 +98,15 @@ export const offersCommands: Record<string, Command> = {
     stdin: true,
     run(ctx, flags, stdin) {
       const id = requiredFlag(flags, "id");
-      if (!getOffer(ctx.db, id)) throw new CommandError(`no offer ${id}`);
+      const offer = getOffer(ctx.db, id);
+      if (!offer) throw new CommandError(`no offer ${id}`);
       const input = readInput(scoresInput, stdin);
-      setScores(ctx.db, id, input, loadProfile(profilePath(ctx)).weights);
+      const weights = loadProfile(profilePath(ctx)).weights;
+      ctx.db.transaction(() => {
+        setScores(ctx.db, id, input, weights);
+        if (input.company)
+          upsertCompanyFromOffer(ctx.db, offer.company, input.company);
+      })();
       const { fit_score, dealbreaker } = getOffer(ctx.db, id)!;
       return { id, fit_score, dealbreaker };
     },
