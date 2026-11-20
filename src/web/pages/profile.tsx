@@ -106,7 +106,8 @@ export function ProfilePage() {
     const r = await fetch("/api/profile", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(fromForm(form)),
+      // Fields the form does not show yet are sent back as loaded.
+      body: JSON.stringify({ ...state?.profile, ...fromForm(form) }),
     });
     const body = await r.json();
     if (r.ok) {

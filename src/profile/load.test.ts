@@ -21,12 +21,40 @@ test("the example profile is valid", () => {
     { place: "Bologna", radius_km: 30 },
     "remote",
   ]);
-  expect(profile.weights.skills).toBe(35);
+  expect(profile.weights.role).toBe(25);
+  expect(profile.bands).toEqual({ strong: 80, apply: 70, maybe: 55 });
+  expect(profile.follow_up_days).toEqual([7, 14]);
 });
 
 test("weights not summing to 100 fail with the sum", () => {
-  const path = write("sum.yaml", example.replace("salary: 10", "salary: 0"));
+  const path = write(
+    "sum.yaml",
+    example.replace("location: 20", "location: 10"),
+  );
   expect(() => loadProfile(path)).toThrow("weights: must sum to 100, got 90");
+});
+
+test("bands out of order and follow-up days out of order fail", () => {
+  const path = write(
+    "order.yaml",
+    example.replace("apply: 70", "apply: 85").replace("[7, 14]", "[14, 7]"),
+  );
+  let message = "";
+  try {
+    loadProfile(path);
+  } catch (err) {
+    message = (err as Error).message;
+  }
+  expect(message).toContain("bands: strong, apply and maybe must go");
+  expect(message).toContain("follow_up_days: the second reminder");
+});
+
+test("a profile without the new fields fails", () => {
+  const path = write(
+    "old.yaml",
+    example.replace(/^bands:[\s\S]*?\[7, 14\]\n/m, ""),
+  );
+  expect(() => loadProfile(path)).toThrow("bands");
 });
 
 test("errors name the field", () => {

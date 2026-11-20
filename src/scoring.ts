@@ -1,3 +1,15 @@
+import type { Bands } from "./profile/schema.ts";
+
+export type Band = "strong" | "apply" | "maybe" | "skip";
+
+export function bandFor(score: number | null, bands: Bands): Band | null {
+  if (score == null) return null;
+  if (score >= bands.strong) return "strong";
+  if (score >= bands.apply) return "apply";
+  if (score >= bands.maybe) return "maybe";
+  return "skip";
+}
+
 export interface CriterionScore {
   criterion: string;
   score: number;

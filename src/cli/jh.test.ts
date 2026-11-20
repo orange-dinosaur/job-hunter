@@ -62,7 +62,7 @@ test("profile:show copies the example once and says so", () => {
   expect(jh("profile:show").note).toContain("Copied the example");
   const second = jh("profile:show");
   expect(second.note).toBeUndefined();
-  expect(second.profile.weights.skills).toBe(35);
+  expect(second.profile.weights.skills).toBe(25);
 });
 
 test("profile:check passes a valid profile and names the broken field", () => {
@@ -71,9 +71,11 @@ test("profile:check passes a valid profile and names the broken field", () => {
   const path = join(ctx.dataDir, "search-profile.yaml");
   writeFileSync(
     path,
-    readFileSync(path, "utf8").replace("salary: 10", "salary: 1"),
+    readFileSync(path, "utf8").replace("salary: 0", "salary: 1"),
   );
-  expect(() => jh("profile:check")).toThrow("weights: must sum to 100, got 91");
+  expect(() => jh("profile:check")).toThrow(
+    "weights: must sum to 100, got 101",
+  );
 });
 
 test("run:start and run:finish record sources and counts", () => {
@@ -132,7 +134,7 @@ test("offers:list shows the latest run and filters unscored and discarded offers
   expect(jh("offers:list --run 1")).toEqual([
     expect.objectContaining({
       id,
-      fit_score: 68,
+      fit_score: 62,
       locations: ["Bologna"],
       gap_count: 1,
     }),
@@ -154,10 +156,10 @@ test("offers:get returns scores and gaps", () => {
 test("scores:set uses the profile weights and rejects unknown criteria", () => {
   jh("profile:show");
   const { id } = seedOffer();
-  // (80*35 + 40*15) / 50 = 68
+  // (80*25 + 40*20) / 45 = 62.2
   expect(jh(`scores:set --id ${id}`, scoring)).toEqual({
     id,
-    fit_score: 68,
+    fit_score: 62,
     dealbreaker: null,
   });
   expect(() =>

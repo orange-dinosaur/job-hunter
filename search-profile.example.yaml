@@ -29,11 +29,21 @@ excluded_sectors:
 
 # How much each criterion counts in the fit score. Must sum to 100.
 weights:
-  skills: 35
-  experience: 25
-  domain: 15
-  location: 15
-  salary: 10
+  role: 25
+  skills: 25
+  experience: 20
+  domain: 10
+  location: 20
+  salary: 0
+
+# Fit score cut-offs: Strong from 80, Apply from 70, Maybe from 55, Skip below.
+bands:
+  strong: 80
+  apply: 70
+  maybe: 55
+
+# Days in Applied with no change before a follow-up reminder, then a second one.
+follow_up_days: [7, 14]
 
 # Rules that exclude an offer outright instead of lowering its score.
 dealbreakers:

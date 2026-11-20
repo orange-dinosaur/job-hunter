@@ -3,6 +3,7 @@ import { z } from "zod";
 const percent = z.int().min(0).max(100);
 
 export const criteria = [
+  "role",
   "skills",
   "experience",
   "domain",
@@ -52,7 +53,19 @@ export const searchProfileSchema = z.strictObject({
         return `must sum to 100, got ${sum}`;
       },
     }),
+  bands: z
+    .strictObject({ strong: percent, apply: percent, maybe: percent })
+    .refine((b) => b.strong > b.apply && b.apply > b.maybe, {
+      error: "strong, apply and maybe must go from highest to lowest",
+    }),
+  follow_up_days: z
+    .tuple([z.int().positive(), z.int().positive()])
+    .refine(([first, second]) => first < second, {
+      error: "the second reminder must come after the first",
+    }),
   dealbreakers: z.array(z.string().min(1)),
 });
+
+export type Bands = SearchProfile["bands"];
 
 export type SearchProfile = z.infer<typeof searchProfileSchema>;

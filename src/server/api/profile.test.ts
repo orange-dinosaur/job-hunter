@@ -38,10 +38,11 @@ test("a saved profile is written as YAML the loader reads back", async () => {
     ...before.profile!,
     roles: ["IT project manager"],
     weights: {
-      skills: 30,
-      experience: 30,
-      domain: 15,
-      location: 15,
+      role: 25,
+      skills: 25,
+      experience: 20,
+      domain: 10,
+      location: 10,
       salary: 10,
     },
   };

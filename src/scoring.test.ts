@@ -1,5 +1,14 @@
 import { expect, test } from "bun:test";
-import { fitScore } from "./scoring.ts";
+import { bandFor, fitScore } from "./scoring.ts";
+
+test("bands start at their cut-off", () => {
+  const bands = { strong: 80, apply: 70, maybe: 55 };
+  expect(bandFor(80, bands)).toBe("strong");
+  expect(bandFor(79, bands)).toBe("apply");
+  expect(bandFor(55, bands)).toBe("maybe");
+  expect(bandFor(54, bands)).toBe("skip");
+  expect(bandFor(null, bands)).toBeNull();
+});
 
 const weights = {
   skills: 35,
