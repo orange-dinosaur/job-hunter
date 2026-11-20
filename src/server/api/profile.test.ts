@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 import { copyFileSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { openDb } from "../../db/migrate.ts";
 import { EXAMPLE_PATH, loadProfile } from "../../profile/load.ts";
 import { profileRoutes, type ProfileState } from "./profile.ts";
 
@@ -13,7 +14,7 @@ beforeEach(() => {
   dir = mkdtempSync(join(tmpdir(), "jh-profile-"));
   path = join(dir, "search-profile.yaml");
   copyFileSync(EXAMPLE_PATH, path);
-  routes = profileRoutes(path, EXAMPLE_PATH);
+  routes = profileRoutes(openDb(":memory:"), path, EXAMPLE_PATH);
 });
 
 afterEach(() => rmSync(dir, { recursive: true, force: true }));

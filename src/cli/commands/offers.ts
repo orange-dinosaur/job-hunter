@@ -2,6 +2,7 @@ import { z } from "zod";
 import {
   getOffer,
   listOffers,
+  refitScores,
   setScores,
   upsertOffers,
 } from "../../db/offers.ts";
@@ -89,6 +90,13 @@ export const offersCommands: Record<string, Command> = {
       setScores(ctx.db, id, input, loadProfile(profilePath(ctx)).weights);
       const { fit_score, dealbreaker } = getOffer(ctx.db, id)!;
       return { id, fit_score, dealbreaker };
+    },
+  },
+  "scores:refit": {
+    help: "Recompute every fit score from stored criterion scores and the profile weights",
+    run(ctx) {
+      const weights = loadProfile(profilePath(ctx)).weights;
+      return { refitted: refitScores(ctx.db, weights) };
     },
   },
 };

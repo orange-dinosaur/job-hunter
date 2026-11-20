@@ -1,5 +1,7 @@
+import type { Database } from "bun:sqlite";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { z } from "zod";
+import { refitScores } from "../../db/offers.ts";
 import {
   EXAMPLE_PATH,
   loadProfile,
@@ -26,7 +28,11 @@ function profileState(path: string, example: string) {
 
 export type ProfileState = ReturnType<typeof profileState>;
 
-export function profileRoutes(path = PROFILE_PATH, example = EXAMPLE_PATH) {
+export function profileRoutes(
+  db: Database,
+  path = PROFILE_PATH,
+  example = EXAMPLE_PATH,
+) {
   return {
     "/api/profile": {
       GET: () => Response.json(profileState(path, example)),
@@ -40,6 +46,7 @@ export function profileRoutes(path = PROFILE_PATH, example = EXAMPLE_PATH) {
             { status: 400 },
           );
         writeFileSync(path, HEADER + Bun.YAML.stringify(input.data, null, 2));
+        refitScores(db, input.data.weights);
         return Response.json(profileState(path, example));
       },
     },

@@ -3,6 +3,7 @@ import { migrate, openDb } from "./migrate.ts";
 import {
   dedupeKey,
   getOffer,
+  refitScores,
   setScores,
   setStatus,
   upsertOffers,
@@ -184,4 +185,31 @@ test("setScores stores scores, gaps and the computed fit score", () => {
     scores: [{ criterion: "skills", score: 70, reason: "rescored" }],
     gaps: [],
   });
+});
+
+test("refitScores recomputes fit scores with new weights and skips dealbreakers", () => {
+  const { db, run1 } = setup();
+  const [kept, unscored, blocked] = upsertOffers(
+    db,
+    [
+      { source: "indeed", title: "Dev", company: "Acme" },
+      { source: "indeed", title: "Ops", company: "Beta" },
+      { source: "indeed", title: "PM", company: "Gamma" },
+    ],
+    run1,
+  ).new;
+  const scores = [
+    { criterion: "skills", score: 90, reason: "match" },
+    { criterion: "location", score: 50, reason: "far" },
+  ];
+  const old = { skills: 60, location: 40 };
+  setScores(db, kept!, { scores, gaps: [], dealbreaker: null }, old);
+  setScores(db, blocked!, { scores, gaps: [], dealbreaker: "relocation" }, old);
+  db.run("UPDATE offers SET fit_score = NULL WHERE id = ?", [blocked!]);
+
+  // role has no stored score, so its weight is shared: (90*20 + 50*60) / 80 = 60
+  expect(refitScores(db, { role: 20, skills: 20, location: 60 })).toBe(1);
+  expect(getOffer(db, kept!)!.fit_score).toBe(60);
+  expect(getOffer(db, unscored!)!.fit_score).toBeNull();
+  expect(getOffer(db, blocked!)!.fit_score).toBeNull();
 });

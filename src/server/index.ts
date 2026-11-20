@@ -23,7 +23,7 @@ const server = Bun.serve({
     ...runsRoutes(db),
     ...agentRoutes(db),
     ...cvRoutes(db, DATA_DIR),
-    ...profileRoutes(),
+    ...profileRoutes(db),
     "/api/*": Response.json({ error: "not found" }, { status: 404 }),
     "/*": index,
   },

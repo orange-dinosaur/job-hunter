@@ -240,6 +240,27 @@ export function setScores(
   })();
 }
 
+// Recomputes every stored fit score from its criterion scores, for new weights.
+// Offers with a dealbreaker keep a null score. Returns how many were refitted.
+export function refitScores(
+  db: Database,
+  weights: Record<string, number>,
+): number {
+  return db.transaction(() => {
+    const rows = db
+      .query<{ offer_id: string; criterion: string; score: number }, []>(
+        `SELECT s.offer_id, s.criterion, s.score FROM offer_scores s
+         JOIN offers o ON o.id = s.offer_id WHERE o.dealbreaker IS NULL`,
+      )
+      .all();
+    const byOffer = Map.groupBy(rows, (r) => r.offer_id);
+    const update = db.query("UPDATE offers SET fit_score = ? WHERE id = ?");
+    for (const [id, scores] of byOffer)
+      update.run(fitScore(scores, weights), id);
+    return byOffer.size;
+  })();
+}
+
 export function setStatus(
   db: Database,
   id: string,
