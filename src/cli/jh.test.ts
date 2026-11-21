@@ -135,6 +135,15 @@ test("offers:list shows the latest run and filters unscored and discarded offers
   expect(jh("offers:list --scored").map((o: { id: string }) => o.id)).toEqual([
     id,
   ]);
+  // Scored just now, so a batch started earlier has already done it.
+  expect(jh("offers:list --scored --before 2000-01-01T00:00:00Z")).toEqual([]);
+  expect(jh("offers:list --scored --before 2999-01-01T00:00:00Z")).toHaveLength(
+    1,
+  );
+  expect(jh("offers:list --scored --limit 0")).toEqual([]);
+  expect(() => jh("offers:list --scored --before soon")).toThrow(
+    "--before must be a date and time",
+  );
   expect(jh("offers:list --run 1")).toEqual([
     expect.objectContaining({
       id,

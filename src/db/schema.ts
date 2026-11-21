@@ -117,4 +117,5 @@ export const migrations: string[] = [
     updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
   );
   `,
+  `ALTER TABLE offers ADD COLUMN scored_at TEXT;`,
 ];

@@ -1,5 +1,5 @@
 import type { Database } from "bun:sqlite";
-import { listOffers } from "../../db/offers.ts";
+import { listOffers, now } from "../../db/offers.ts";
 import type { OperationType } from "../../runner/models.ts";
 import { runOperation } from "../../runner/run-claude.ts";
 
@@ -36,7 +36,9 @@ export function runsRoutes(db: Database) {
     "/api/rescore": {
       GET: () => Response.json(rescoreState()),
       POST() {
-        runOperation(db, "rescore");
+        runOperation(db, "rescore", {
+          args: ["--before", now(), "--limit", "10"],
+        });
         return Response.json(rescoreState());
       },
     },

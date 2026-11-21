@@ -70,14 +70,25 @@ export const offersCommands: Record<string, Command> = {
     },
   },
   "offers:list": {
-    help: "List a run's offers, best first (--run latest|<id>, --unscored), or every scored offer across runs (--scored)",
+    help: "List a run's offers, best first (--run latest|<id>, --unscored), or scored offers across runs (--scored [--before <time>] [--limit <n>])",
     options: {
       run: { type: "string", default: "latest" },
       unscored: { type: "boolean", default: false },
       scored: { type: "boolean", default: false },
+      before: { type: "string" },
+      limit: { type: "string" },
     },
     run(ctx, flags) {
-      if (flags.scored === true) return listOffers(ctx.db, null, "scored");
+      if (flags.scored === true) {
+        const before = flags.before as string | undefined;
+        if (before !== undefined && Number.isNaN(Date.parse(before)))
+          throw new CommandError("--before must be a date and time");
+        return listOffers(ctx.db, null, "scored", {
+          before,
+          limit:
+            flags.limit === undefined ? undefined : intFlag(flags, "limit"),
+        });
+      }
       const runId =
         flags.run === "latest" ? latestRunId(ctx.db) : intFlag(flags, "run");
       if (runId == null) return [];

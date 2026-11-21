@@ -44,6 +44,7 @@ export interface Offer {
   status_note: string | null;
   fit_score: number | null;
   dealbreaker: string | null;
+  scored_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -238,8 +239,14 @@ export function setScores(
     const gap = db.query("INSERT INTO offer_gaps VALUES (?, ?)");
     for (const g of scoring.gaps) gap.run(id, g);
     db.run(
-      "UPDATE offers SET fit_score = ?, dealbreaker = ?, updated_at = ? WHERE id = ?",
-      [fitScore(scoring.scores, weights), scoring.dealbreaker, now(), id],
+      "UPDATE offers SET fit_score = ?, dealbreaker = ?, scored_at = ?, updated_at = ? WHERE id = ?",
+      [
+        fitScore(scoring.scores, weights),
+        scoring.dealbreaker,
+        now(),
+        now(),
+        id,
+      ],
     );
   })();
 }
@@ -305,11 +312,13 @@ const scoreFilters = {
 };
 
 // Offers seen in a run (or in any run when runId is null), best first.
-// Discarded offers are left out.
+// Discarded offers are left out. `before` keeps offers not scored since then,
+// so a rescore in batches can tell which offers it has done.
 export function listOffers(
   db: Database,
   runId: number | null,
   filter?: keyof typeof scoreFilters,
+  opts: { before?: string; limit?: number } = {},
 ): OfferSummary[] {
   return db
     .query<
@@ -317,15 +326,17 @@ export function listOffers(
         locations: string;
         sources: string;
       },
-      [number | null]
+      [number | null, string | null, number]
     >(
       `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker,
          (SELECT count(*) FROM offer_gaps g WHERE g.offer_id = offers.id) AS gap_count
        FROM offers WHERE (?1 IS NULL OR last_seen_run_id = ?1) AND status != 'discarded'
+         AND (?2 IS NULL OR scored_at IS NULL OR scored_at < ?2)
          ${filter ? scoreFilters[filter] : ""}
-       ORDER BY fit_score DESC NULLS LAST, created_at`,
+       ORDER BY fit_score DESC NULLS LAST, created_at
+       LIMIT ?3`,
     )
-    .all(runId)
+    .all(runId, opts.before ?? null, opts.limit ?? -1)
     .map((o) => ({
       ...o,
       locations: JSON.parse(o.locations),
