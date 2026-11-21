@@ -1,4 +1,6 @@
 import type { Database } from "bun:sqlite";
+import { listOffers } from "../../db/offers.ts";
+import type { OperationType } from "../../runner/models.ts";
 import { runOperation } from "../../runner/run-claude.ts";
 
 export interface SearchOperation {
@@ -10,20 +12,32 @@ export interface SearchOperation {
 }
 
 export function runsRoutes(db: Database) {
-  const latest = () =>
+  const latest = (type: OperationType) =>
     db
-      .query<SearchOperation, []>(
-        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = 'search_run' ORDER BY id DESC LIMIT 1",
+      .query<SearchOperation, [string]>(
+        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = ? ORDER BY id DESC LIMIT 1",
       )
-      .get();
+      .get(type);
+  const rescoreState = () => ({
+    count: listOffers(db, null, "scored").length,
+    operation: latest("rescore"),
+  });
 
   return {
     // The most recent search operation, which the page polls while it runs.
     "/api/search": {
-      GET: () => Response.json(latest()),
+      GET: () => Response.json(latest("search_run")),
       POST() {
         runOperation(db, "search_run");
-        return Response.json(latest());
+        return Response.json(latest("search_run"));
+      },
+    },
+    // How many offers a rescore would touch, and the latest rescore operation.
+    "/api/rescore": {
+      GET: () => Response.json(rescoreState()),
+      POST() {
+        runOperation(db, "rescore");
+        return Response.json(rescoreState());
       },
     },
   };

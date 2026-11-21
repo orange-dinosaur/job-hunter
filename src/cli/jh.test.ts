@@ -132,6 +132,9 @@ test("offers:list shows the latest run and filters unscored and discarded offers
   jh(`scores:set --id ${id}`, scoring);
   setStatus(ctx.db, other, "discarded");
   expect(jh("offers:list --unscored")).toEqual([]);
+  expect(jh("offers:list --scored").map((o: { id: string }) => o.id)).toEqual([
+    id,
+  ]);
   expect(jh("offers:list --run 1")).toEqual([
     expect.objectContaining({
       id,

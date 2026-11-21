@@ -297,26 +297,32 @@ export interface OfferSummary {
   gap_count: number;
 }
 
-// Offers seen in a run, best first. Discarded offers are left out.
+const hasScores =
+  "EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)";
+const scoreFilters = {
+  unscored: `AND dealbreaker IS NULL AND NOT ${hasScores}`,
+  scored: `AND (dealbreaker IS NOT NULL OR ${hasScores})`,
+};
+
+// Offers seen in a run (or in any run when runId is null), best first.
+// Discarded offers are left out.
 export function listOffers(
   db: Database,
-  runId: number,
-  unscoredOnly = false,
+  runId: number | null,
+  filter?: keyof typeof scoreFilters,
 ): OfferSummary[] {
-  const unscored = unscoredOnly
-    ? "AND dealbreaker IS NULL AND NOT EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)"
-    : "";
   return db
     .query<
       Omit<OfferSummary, "locations" | "sources"> & {
         locations: string;
         sources: string;
       },
-      [number]
+      [number | null]
     >(
       `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker,
          (SELECT count(*) FROM offer_gaps g WHERE g.offer_id = offers.id) AS gap_count
-       FROM offers WHERE last_seen_run_id = ? AND status != 'discarded' ${unscored}
+       FROM offers WHERE (?1 IS NULL OR last_seen_run_id = ?1) AND status != 'discarded'
+         ${filter ? scoreFilters[filter] : ""}
        ORDER BY fit_score DESC NULLS LAST, created_at`,
     )
     .all(runId)

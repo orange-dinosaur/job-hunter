@@ -70,16 +70,22 @@ export const offersCommands: Record<string, Command> = {
     },
   },
   "offers:list": {
-    help: "List a run's offers, best first (--run latest|<id>, --unscored)",
+    help: "List a run's offers, best first (--run latest|<id>, --unscored), or every scored offer across runs (--scored)",
     options: {
       run: { type: "string", default: "latest" },
       unscored: { type: "boolean", default: false },
+      scored: { type: "boolean", default: false },
     },
     run(ctx, flags) {
+      if (flags.scored === true) return listOffers(ctx.db, null, "scored");
       const runId =
         flags.run === "latest" ? latestRunId(ctx.db) : intFlag(flags, "run");
       if (runId == null) return [];
-      return listOffers(ctx.db, runId, flags.unscored === true);
+      return listOffers(
+        ctx.db,
+        runId,
+        flags.unscored === true ? "unscored" : undefined,
+      );
     },
   },
   "offers:get": {
