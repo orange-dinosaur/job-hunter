@@ -11,6 +11,29 @@ export interface SearchOperation {
   error: string | null;
 }
 
+const BATCH = "10";
+
+const remaining = (db: Database, before: string) =>
+  listOffers(db, null, "scored", { before }).length;
+
+// Runs rescore batches one after another until every offer scored before
+// `before` has been scored again. Stops early when a batch saves nothing,
+// so a broken run cannot loop forever.
+export async function rescoreInBatches(
+  db: Database,
+  before: string,
+  start = runOperation,
+) {
+  let left = remaining(db, before);
+  while (left > 0) {
+    await start(db, "rescore", { args: ["--before", before, "--limit", BATCH] })
+      .done;
+    const next = remaining(db, before);
+    if (next >= left) return;
+    left = next;
+  }
+}
+
 export function runsRoutes(db: Database) {
   const latest = (type: OperationType) =>
     db
@@ -18,9 +41,18 @@ export function runsRoutes(db: Database) {
         "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = ? ORDER BY id DESC LIMIT 1",
       )
       .get(type);
+
+  // ponytail: kept in memory, so a server restart drops the progress line and
+  // stops the chain after the batch in flight.
+  let chain: { before: string; total: number } | null = null;
+
   const rescoreState = () => ({
     count: listOffers(db, null, "scored").length,
     operation: latest("rescore"),
+    progress: chain && {
+      done: chain.total - remaining(db, chain.before),
+      total: chain.total,
+    },
   });
 
   return {
@@ -32,13 +64,16 @@ export function runsRoutes(db: Database) {
         return Response.json(latest("search_run"));
       },
     },
-    // How many offers a rescore would touch, and the latest rescore operation.
+    // How many offers a rescore would touch, the latest rescore operation,
+    // and how far a rescore of all offers has got.
     "/api/rescore": {
       GET: () => Response.json(rescoreState()),
       POST() {
-        runOperation(db, "rescore", {
-          args: ["--before", now(), "--limit", "10"],
-        });
+        if (!chain) {
+          const before = now();
+          chain = { before, total: remaining(db, before) };
+          rescoreInBatches(db, before).finally(() => (chain = null));
+        }
         return Response.json(rescoreState());
       },
     },

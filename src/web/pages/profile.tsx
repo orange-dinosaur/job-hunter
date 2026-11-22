@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { criteria, type SearchProfile } from "../../profile/schema.ts";
 import type { ProfileState } from "../../server/api/profile.ts";
+import type { SearchOperation } from "../../server/api/runs.ts";
 
 // The form keeps lists as one item per line, and numbers as typed.
 interface Form {
@@ -14,7 +15,17 @@ interface Form {
   excluded_sectors: string;
   dealbreakers: string;
   weights: Record<string, string>;
+  bands: { strong: string; apply: string; maybe: string };
+  follow_up_days: [string, string];
 }
+
+interface RescoreState {
+  count: number;
+  operation: SearchOperation | null;
+  progress: { done: number; total: number } | null;
+}
+
+const POLL_MS = 3000;
 
 const lines = (s: string) =>
   s
@@ -40,6 +51,12 @@ function toForm(p: SearchProfile): Form {
     weights: Object.fromEntries(
       Object.entries(p.weights).map(([k, v]) => [k, String(v)]),
     ),
+    bands: {
+      strong: String(p.bands.strong),
+      apply: String(p.bands.apply),
+      maybe: String(p.bands.maybe),
+    },
+    follow_up_days: [String(p.follow_up_days[0]), String(p.follow_up_days[1])],
   };
 }
 
@@ -64,6 +81,12 @@ function fromForm(f: Form) {
       Object.entries(f.weights).map(([k, v]) => [k, num(v)]),
     ),
     dealbreakers: lines(f.dealbreakers),
+    bands: {
+      strong: num(f.bands.strong),
+      apply: num(f.bands.apply),
+      maybe: num(f.bands.maybe),
+    },
+    follow_up_days: f.follow_up_days.map(num),
   };
 }
 
@@ -72,6 +95,7 @@ export function ProfilePage() {
   const [form, setForm] = useState<Form | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [rescore, setRescore] = useState<RescoreState | null>(null);
 
   const show = (s: ProfileState) => {
     setState(s);
@@ -82,7 +106,25 @@ export function ProfilePage() {
     fetch("/api/profile")
       .then((r) => r.json())
       .then(show);
+    fetch("/api/rescore")
+      .then((r) => r.json())
+      .then(setRescore);
   }, []);
+
+  // Poll while a rescore of all offers runs.
+  useEffect(() => {
+    if (!rescore?.progress) return;
+    const timer = setTimeout(
+      async () => setRescore(await (await fetch("/api/rescore")).json()),
+      POLL_MS,
+    );
+    return () => clearTimeout(timer);
+  }, [rescore]);
+
+  const rescoreAll = async () => {
+    if (!rescore || !confirm(`Rescore ${rescore.count} offers?`)) return;
+    setRescore(await (await fetch("/api/rescore", { method: "POST" })).json());
+  };
 
   if (!state) return <p className="muted">Loading…</p>;
   if (!form)
@@ -275,6 +317,82 @@ export function ProfilePage() {
           <span className="muted">
             How much each criterion counts in the fit score. Must sum to 100.
             The next search uses the saved weights.
+          </span>
+        </div>
+
+        <div className="field">
+          <span>Bands</span>
+          <table>
+            <tbody>
+              {(["strong", "apply", "maybe"] as const).map((b) => (
+                <tr key={b}>
+                  <td>{b} from</td>
+                  <td className="num">
+                    <input
+                      value={form.bands[b]}
+                      inputMode="numeric"
+                      onChange={(e) =>
+                        set({ bands: { ...form.bands, [b]: e.target.value } })
+                      }
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <span className="muted">
+            Fit score cut-offs, highest first. Offers below maybe are Skip.
+          </span>
+        </div>
+
+        <div className="field">
+          <span>Follow-up days</span>
+          <div className="filters">
+            {(["First reminder", "Second reminder"] as const).map(
+              (label, i) => (
+                <label key={label}>
+                  {label}{" "}
+                  <input
+                    value={form.follow_up_days[i]}
+                    inputMode="numeric"
+                    onChange={(e) => {
+                      const days = [...form.follow_up_days] as [string, string];
+                      days[i] = e.target.value;
+                      set({ follow_up_days: days });
+                    }}
+                  />
+                </label>
+              ),
+            )}
+          </div>
+          <span className="muted">
+            Days in Applied with no change before each follow-up reminder.
+          </span>
+        </div>
+
+        <div className="field">
+          <span>Rescore</span>
+          <div className="filters">
+            <button
+              onClick={rescoreAll}
+              disabled={!rescore || !!rescore.progress || !rescore.count}
+            >
+              Rescore all offers
+            </button>
+            {rescore?.progress && (
+              <span className="muted">
+                Rescoring {rescore.progress.done} of {rescore.progress.total}
+              </span>
+            )}
+          </div>
+          {!rescore?.progress && rescore?.operation?.status === "failed" && (
+            <p className="notice error">
+              The last rescore batch failed: {rescore.operation.error}
+            </p>
+          )}
+          <span className="muted">
+            Scores every scored offer again with the current rubric, 10 at a
+            time. It keeps going if you close this tab.
           </span>
         </div>
       </div>
