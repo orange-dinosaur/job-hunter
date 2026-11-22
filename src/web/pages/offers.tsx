@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from "react";
 import type { OfferSummary } from "../../db/offers.ts";
 import type { SearchRun } from "../../db/runs.ts";
 import type { SearchOperation } from "../../server/api/runs.ts";
+import type { Band } from "../../scoring.ts";
 
 interface OffersResponse {
   has_cv: boolean;
   run: SearchRun | null;
-  offers: (OfferSummary & { kits: string[] })[];
+  offers: (OfferSummary & { kits: string[]; band: Band | null })[];
 }
 
 const POLL_MS = 3000;
@@ -19,7 +20,7 @@ const time = (iso: string | null) =>
 
 // Kept outside the component so the filters survive a visit to an offer.
 // ponytail: a page reload resets them; move them into the URL if that matters.
-const filters = { minScore: 0, source: "", status: "" };
+const filters = { minScore: 0, source: "", status: "", showSkip: false };
 
 export function OffersPage(props: { navigate: (path: string) => void }) {
   const [data, setData] = useState<OffersResponse | null>(null);
@@ -27,10 +28,11 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
   const [minScore, setMinScore] = useState(filters.minScore);
   const [source, setSource] = useState(filters.source);
   const [status, setStatus] = useState(filters.status);
+  const [showSkip, setShowSkip] = useState(filters.showSkip);
 
   useEffect(() => {
-    Object.assign(filters, { minScore, source, status });
-  }, [minScore, source, status]);
+    Object.assign(filters, { minScore, source, status, showSkip });
+  }, [minScore, source, status, showSkip]);
 
   const loadOffers = useCallback(async () => {
     setData(await (await fetch("/api/offers")).json());
@@ -66,12 +68,14 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
 
   const sources = [...new Set(data.offers.flatMap((o) => o.sources))].sort();
   const statuses = [...new Set(data.offers.map((o) => o.status))].sort();
-  const shown = data.offers.filter(
+  const matching = data.offers.filter(
     (o) =>
       (minScore === 0 || (o.fit_score ?? -1) >= minScore) &&
       (!source || o.sources.includes(source)) &&
       (!status || o.status === status),
   );
+  const skipCount = matching.filter((o) => o.band === "skip").length;
+  const shown = showSkip ? matching : matching.filter((o) => o.band !== "skip");
 
   return (
     <div className="fill">
@@ -161,6 +165,14 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                 ))}
               </select>
             </label>
+            <label>
+              <input
+                type="checkbox"
+                checked={showSkip}
+                onChange={(e) => setShowSkip(e.target.checked)}
+              />{" "}
+              Show Skip ({skipCount})
+            </label>
             <span className="muted">
               {shown.length} of {data.offers.length}
             </span>
@@ -190,7 +202,12 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                           excluded
                         </span>
                       ) : (
-                        (o.fit_score ?? <span className="muted">unscored</span>)
+                        <>
+                          {o.fit_score ?? (
+                            <span className="muted">unscored</span>
+                          )}
+                          {o.band && <span className="muted"> {o.band}</span>}
+                        </>
                       )}
                     </td>
                     <td>{o.company}</td>

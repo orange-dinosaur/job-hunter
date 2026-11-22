@@ -235,6 +235,7 @@ export function OfferDetailPage(props: {
       <h2>
         Fit score{" "}
         {offer.dealbreaker ? "excluded" : (offer.fit_score ?? "unscored")}
+        {offer.band && <span className="muted"> {offer.band}</span>}
       </h2>
       {offer.dealbreaker ? (
         <p className="notice">Dealbreaker: {offer.dealbreaker}</p>

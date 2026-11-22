@@ -7,6 +7,7 @@ import { DATA_DIR } from "../../db/migrate.ts";
 import { getOffer, offerStatuses, setStatus } from "../../db/offers.ts";
 import { loadProfile } from "../../profile/load.ts";
 import type { OperationType } from "../../runner/models.ts";
+import { bandFor } from "../../scoring.ts";
 import { runOperation } from "../../runner/run-claude.ts";
 import type { SearchOperation } from "./runs.ts";
 
@@ -69,10 +70,12 @@ function detail(db: Database, dataDir: string, id: string) {
         "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = ? AND offer_id = ? ORDER BY id DESC LIMIT 1",
       )
       .get(type, id);
+  const profile = loadProfile(join(dataDir, "search-profile.yaml"));
   return {
     ...offer,
     text: existsSync(file) ? readFileSync(file, "utf8") : null,
-    weights: loadProfile(join(dataDir, "search-profile.yaml")).weights,
+    weights: profile.weights,
+    band: bandFor(offer.fit_score, profile.bands),
     kits: kitLangs(dataDir, id).map((lang) => readKit(dataDir, id, lang)),
     kit_operation: latest("application_kit"),
     letters: readLetters(dataDir, id),
