@@ -13,6 +13,12 @@ export const allowedTools = [
   `Edit(/${join(REPO_ROOT, "data/tmp")}/**)`,
 ];
 
+// Company search is the only operation that may reach the web.
+export const toolsFor = (type: OperationType) =>
+  type === "company_search"
+    ? [...allowedTools, "WebSearch", "WebFetch"]
+    : allowedTools;
+
 export interface StartedOperation {
   id: number;
   // True when an operation of the same type for the same offer was already queued or running.
@@ -74,7 +80,11 @@ export function runOperation(
     ).lastInsertRowid,
   );
   const prompt = [`/${commandFor[type]}`, ...(opts.args ?? [])].join(" ");
-  return { id, existing: false, done: execute(db, id, model, prompt) };
+  return {
+    id,
+    existing: false,
+    done: execute(db, id, model, prompt, toolsFor(type)),
+  };
 }
 
 async function execute(
@@ -82,6 +92,7 @@ async function execute(
   id: number,
   model: string,
   prompt: string,
+  tools: string[],
 ): Promise<void> {
   const started = Date.now();
   db.run(
@@ -106,7 +117,7 @@ async function execute(
         "--output-format",
         "json",
         "--allowedTools",
-        ...allowedTools,
+        ...tools,
         "--",
         prompt,
       ],

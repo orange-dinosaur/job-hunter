@@ -49,6 +49,51 @@ export function upsertCompanyFromOffer(
   );
 }
 
+export interface SearchedCompany extends CompanyFields {
+  name: string;
+  town: string | null;
+  website: string | null;
+  careers_url: string | null;
+  reason: string;
+}
+
+// Saves a company found by company search. A company already known keeps its
+// name, origin, watched and sector; a known size or kind is never replaced by
+// unknown; the search fills in town, links and reason. Returns true if new.
+export function upsertCompanyFromSearch(
+  db: Database,
+  c: SearchedCompany,
+): boolean {
+  const key = companyKey(c.name);
+  const existed = db.query("SELECT 1 FROM companies WHERE key = ?").get(key);
+  db.run(
+    `INSERT INTO companies (key, name, sector, size, kind, town, website, careers_url, reason, origin, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'search', ?)
+     ON CONFLICT (key) DO UPDATE SET
+       sector = coalesce(sector, excluded.sector),
+       size = CASE WHEN excluded.size = 'unknown' THEN coalesce(size, 'unknown') ELSE excluded.size END,
+       kind = CASE WHEN excluded.kind = 'unknown' THEN coalesce(kind, 'unknown') ELSE excluded.kind END,
+       town = coalesce(excluded.town, town),
+       website = coalesce(excluded.website, website),
+       careers_url = coalesce(excluded.careers_url, careers_url),
+       reason = excluded.reason,
+       updated_at = excluded.updated_at`,
+    [
+      key,
+      c.name,
+      c.sector,
+      c.size,
+      c.kind,
+      c.town,
+      c.website,
+      c.careers_url,
+      c.reason,
+      now(),
+    ],
+  );
+  return !existed;
+}
+
 export interface CompanyFilters {
   sector?: string;
   size?: string;

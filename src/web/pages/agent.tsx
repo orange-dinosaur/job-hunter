@@ -9,6 +9,7 @@ const labels: Record<string, string> = {
   cv_suggestion: "CV suggestion",
   rescore: "Rescore",
   follow_up: "Follow-up",
+  company_search: "Company search",
 };
 
 const usd = (n: number | null) => (n == null ? "–" : `$${n.toFixed(2)}`);

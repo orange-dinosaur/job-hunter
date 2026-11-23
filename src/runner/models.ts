@@ -8,6 +8,7 @@ export const operationTypes = [
   "cv_suggestion",
   "rescore",
   "follow_up",
+  "company_search",
 ] as const;
 export type OperationType = (typeof operationTypes)[number];
 
@@ -20,6 +21,7 @@ export const commandFor: Record<OperationType, string> = {
   cv_suggestion: "cv-apply-suggestion",
   rescore: "job-rescore",
   follow_up: "follow-up",
+  company_search: "company-search",
 };
 
 export const defaultModels: Record<OperationType, string> = {
@@ -30,6 +32,7 @@ export const defaultModels: Record<OperationType, string> = {
   cv_suggestion: "sonnet",
   rescore: "sonnet",
   follow_up: "sonnet",
+  company_search: "sonnet",
 };
 
 // Aliases `claude --model` accepts.

@@ -7,6 +7,7 @@ import {
   type Context,
   type Flags,
 } from "./command.ts";
+import { companiesCommands } from "./commands/companies.ts";
 import { cvCommands } from "./commands/cv.ts";
 import { kitCommands } from "./commands/kit.ts";
 import { offersCommands } from "./commands/offers.ts";
@@ -23,6 +24,7 @@ export const commands: Record<string, Command> = {
   ...cvCommands,
   ...suggestionsCommands,
   ...kitCommands,
+  ...companiesCommands,
 };
 
 export function helpText(): string {

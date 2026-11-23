@@ -350,3 +350,45 @@ test("--input reads the JSON from a file and deletes it only on success", () => 
   expect(() => jh(`suggestions:add --input ${file}`)).toThrow("no file at");
   expect(() => jh(`offers:get --id ${id} --input ${file}`)).toThrow();
 });
+
+test("companies:add saves searched companies and merges known ones", () => {
+  // Acme already known from an offer, with a size and kind.
+  ctx.db.run(
+    "INSERT INTO companies (key, name, sector, size, kind, origin) VALUES ('acme', 'Acme', 'manufacturing', 'large', 'end_client', 'offer')",
+  );
+  const found = (name: string, extra = {}) => ({
+    name,
+    sector: "it_software",
+    size: "unknown",
+    kind: "unknown",
+    town: "Bologna",
+    website: "https://example.it",
+    careers_url: null,
+    reason: "Runs IT projects in Bologna",
+    ...extra,
+  });
+  expect(
+    jh("companies:add", [found("Acme S.p.A."), found("Beta", { size: "sme" })]),
+  ).toEqual({ added: ["Beta"], merged: ["Acme S.p.A."] });
+
+  const list = jh("companies:list");
+  expect(list).toEqual([
+    { key: "acme", name: "Acme", town: "Bologna", origin: "offer" },
+    { key: "beta", name: "Beta", town: "Bologna", origin: "search" },
+  ]);
+  expect(
+    ctx.db
+      .query("SELECT sector, size, kind FROM companies WHERE key = 'acme'")
+      .get(),
+  ).toEqual({ sector: "manufacturing", size: "large", kind: "end_client" });
+
+  expect(() =>
+    jh("companies:add", [found("Gamma", { kind: "agency" })]),
+  ).toThrow("invalid input");
+  expect(() =>
+    jh(
+      "companies:add",
+      Array.from({ length: 21 }, (_, i) => found(`C${i}`)),
+    ),
+  ).toThrow("invalid input");
+});

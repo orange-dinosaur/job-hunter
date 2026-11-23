@@ -10,7 +10,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { openDb } from "../db/migrate.ts";
-import { allowedTools, runOperation } from "./run-claude.ts";
+import { allowedTools, runOperation, toolsFor } from "./run-claude.ts";
 
 // A fake `claude` on PATH. It records its arguments and the operation id, then
 // behaves as FAKE_CLAUDE_MODE says.
@@ -135,6 +135,15 @@ test("the model comes from settings and args follow the command", async () => {
   // The prompt is the last argument, before the operation id and the final newline.
   expect(args.at(-3)).toBe("/job-prepare o1 en");
   expect(operation(op.id)).toMatchObject({ offer_id: "o1", model: "haiku" });
+});
+
+test("only company search gets the web tools", async () => {
+  process.env.FAKE_CLAUDE_MODE = "ok";
+  await runOperation(db, "company_search").done;
+  const args = readFileSync(argsFile, "utf8").split("\n");
+  expect(args).toContain("WebSearch");
+  expect(args).toContain("WebFetch");
+  expect(toolsFor("search_run")).not.toContain("WebSearch");
 });
 
 test("a Claude error marks the operation failed with its message and cost", async () => {
