@@ -32,6 +32,8 @@ const kitInput = z.strictObject({
   unsupported,
 });
 
+const followUpInput = z.strictObject({ text: z.string().trim().min(1) });
+
 const letterInput = z.strictObject({
   text: z.string().trim().min(1),
   unsupported,
@@ -60,6 +62,24 @@ export const kitCommands: Record<string, Command> = {
       writeFileSync(join(dir, "factcheck.json"), json(kit.unsupported));
       markPrepared(ctx.db, id);
       return { dir, status: getOffer(ctx.db, id)!.status };
+    },
+  },
+  "followup:save": {
+    help: "Save a follow-up email draft (--id, --lang it|en, stdin: text)",
+    options: { id: { type: "string" }, lang: { type: "string" } },
+    stdin: true,
+    run(ctx, flags, stdin) {
+      const id = requiredFlag(flags, "id");
+      const lang = requiredFlag(flags, "lang");
+      if (lang !== "it" && lang !== "en")
+        throw new CommandError("--lang must be it or en");
+      if (!getOffer(ctx.db, id)) throw new CommandError(`no offer ${id}`);
+      const { text } = readInput(followUpInput, stdin);
+
+      const file = join(ctx.dataDir, "offers", id, `follow-up-${lang}.md`);
+      mkdirSync(dirname(file), { recursive: true });
+      writeFileSync(file, text.trim() + "\n");
+      return { file, words: text.trim().split(/\s+/).length };
     },
   },
   "letter:save": {

@@ -308,6 +308,20 @@ test("kit:save writes the kit files and marks the offer prepared", () => {
   );
 });
 
+test("followup:save writes the draft for an existing offer", () => {
+  const { id } = seedOffer();
+  const result = jh(`followup:save --id ${id} --lang it`, {
+    text: "  Buongiorno,\n\nvolevo sapere...\n",
+  });
+  expect(readFileSync(result.file, "utf8")).toBe(
+    "Buongiorno,\n\nvolevo sapere...\n",
+  );
+  expect(result.words).toBe(3);
+  expect(() => jh("followup:save --id nope --lang it", { text: "x" })).toThrow(
+    "no offer nope",
+  );
+});
+
 test("kit:save never moves an offer back to prepared", () => {
   const { id } = seedOffer();
   setStatus(ctx.db, id, "applied");

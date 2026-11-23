@@ -8,6 +8,7 @@ const labels: Record<string, string> = {
   cover_letter: "Cover letter",
   cv_suggestion: "CV suggestion",
   rescore: "Rescore",
+  follow_up: "Follow-up",
 };
 
 const usd = (n: number | null) => (n == null ? "–" : `$${n.toFixed(2)}`);
