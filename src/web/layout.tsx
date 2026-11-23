@@ -5,7 +5,7 @@ export const navItems = [
   { path: "/agent", label: "AI Agent" },
   { path: "/cv", label: "CV" },
   { path: "/profile", label: "Search profile" },
-  { path: "/pipeline", label: "Pipeline" },
+  { path: "/companies", label: "Companies" },
 ];
 
 export function Layout(props: {

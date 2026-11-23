@@ -108,6 +108,7 @@ interface CompanyRow extends CompanyFields {
   town: string | null;
   website: string | null;
   careers_url: string | null;
+  reason: string | null;
   origin: "offer" | "search";
   watched: number;
 }
@@ -142,7 +143,7 @@ export function listCompanies(db: Database, filters: CompanyFilters = {}) {
   const where = (["sector", "size", "kind"] as const).filter((f) => filters[f]);
   const rows = db
     .query<CompanyRow, string[]>(
-      `SELECT key, name, sector, size, kind, town, website, careers_url, origin, watched
+      `SELECT key, name, sector, size, kind, town, website, careers_url, reason, origin, watched
        FROM companies ${where.length ? "WHERE " + where.map((f) => `${f} = ?`).join(" AND ") : ""}`,
     )
     .all(...where.map((f) => filters[f]!));

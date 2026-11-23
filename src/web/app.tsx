@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { Layout } from "./layout.tsx";
 import { AgentPage } from "./pages/agent.tsx";
+import { CompaniesPage } from "./pages/companies.tsx";
 import { CvPage } from "./pages/cv.tsx";
 import { OfferDetailPage } from "./pages/offer-detail.tsx";
 import { OffersPage } from "./pages/offers.tsx";
@@ -14,7 +15,7 @@ export function pageTitle(path: string): string {
     "/agent": "AI Agent",
     "/cv": "CV",
     "/profile": "Search profile",
-    "/pipeline": "Pipeline",
+    "/companies": "Companies",
   };
   return titles[path] ?? "Page not found";
 }
@@ -48,15 +49,12 @@ function App() {
   else if (title === "AI Agent") page = <AgentPage navigate={navigate} />;
   else if (title === "CV") page = <CvPage />;
   else if (title === "Search profile") page = <ProfilePage />;
+  else if (title === "Companies") page = <CompaniesPage navigate={navigate} />;
   else
     page = (
       <>
         <h1>{title}</h1>
-        <p className="muted">
-          {title === "Page not found"
-            ? `Nothing at ${path}.`
-            : "This page is not built yet."}
-        </p>
+        <p className="muted">Nothing at {path}.</p>
       </>
     );
 
