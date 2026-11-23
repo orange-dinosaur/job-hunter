@@ -349,7 +349,7 @@ export interface OfferSummary {
 
 const appliedAt =
   "(SELECT max(h.at) FROM status_history h WHERE h.offer_id = offers.id AND h.status = 'applied')";
-const firstSeenAt =
+export const firstSeenAt =
   "coalesce((SELECT r.started_at FROM search_runs r WHERE r.id = offers.first_seen_run_id), created_at)";
 const hasScores =
   "EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)";
