@@ -281,6 +281,10 @@ test("kit:save writes the kit files and marks the offer prepared", () => {
     cv: { headline: "tailored" },
     steps: "1. Apply on the site",
     suggestions: [{ text: "Mention Docker" }],
+    keywords: [
+      { term: "Jira", covered: true },
+      { term: "SAP", covered: false },
+    ],
   });
   expect(result.status).toBe("prepared");
   const dir = join(ctx.dataDir, "offers", id, "kit-en");
@@ -291,6 +295,10 @@ test("kit:save writes the kit files and marks the offer prepared", () => {
     "1. Apply on the site\n",
   );
   expect(existsSync(join(dir, "suggestions.json"))).toBe(true);
+  expect(JSON.parse(readFileSync(join(dir, "keywords.json"), "utf8"))).toEqual([
+    { term: "Jira", covered: true },
+    { term: "SAP", covered: false },
+  ]);
   expect(() => jh(`kit:save --id ${id} --lang fr`, {})).toThrow(
     "--lang must be it or en",
   );
@@ -299,7 +307,7 @@ test("kit:save writes the kit files and marks the offer prepared", () => {
 test("kit:save never moves an offer back to prepared", () => {
   const { id } = seedOffer();
   setStatus(ctx.db, id, "applied");
-  const kit = { cv: {}, steps: "x", suggestions: [] };
+  const kit = { cv: {}, steps: "x", suggestions: [], keywords: [] };
   expect(jh(`kit:save --id ${id} --lang it`, kit).status).toBe("applied");
 });
 

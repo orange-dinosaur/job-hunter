@@ -13,13 +13,13 @@ To pass JSON to a `jh` command, write it with the Write tool to a file in `data/
 2. Read `data/offers/<offer id>/offer.md`.
 3. Run `bun run jh cv:current`. If there is no CV, stop and say to run `/cv-import` first.
 4. Run `bun run jh suggestions:list --status open`.
-5. Write the tailored CV, the steps and the suggestions as described below.
+5. Write the tailored CV, the keywords, the steps and the suggestions as described below.
 6. Record each suggestion, one at a time, by writing its JSON to `data/tmp/suggestion.json` and running `bun run jh suggestions:add --input data/tmp/suggestion.json`. Keep the `id` it prints. The JSON is:
    - one that matches an open suggestion: `{"id": <its id>, "offer_id": "<offer id>"}`,
    - a new one: `{"text": "...", "offer_id": "<offer id>"}`.
-7. Write `{"cv": {...}, "steps": "...", "suggestions": [...]}` to `data/tmp/kit.json` and run `bun run jh kit:save --id <offer id> --lang <lang> --input data/tmp/kit.json`. Keep the `dir` it prints.
+7. Write `{"cv": {...}, "steps": "...", "suggestions": [...], "keywords": [...]}` to `data/tmp/kit.json` and run `bun run jh kit:save --id <offer id> --lang <lang> --input data/tmp/kit.json`. Keep the `dir` it prints.
 8. Run `bun run jh cv:render --file <dir>/cv.json --lang <lang> --out <dir>/cv.pdf`. If it reports invalid fields, fix them in the CV, save again with step 7, and render again.
-9. Reply with the PDF path, the offer status, what you changed in the CV and why, and the suggestions with whether each was new or matched.
+9. Reply with the PDF path, the offer status, what you changed in the CV and why, the missing keywords, and the suggestions with whether each was new or matched.
 
 ## Honesty rule
 
@@ -36,6 +36,14 @@ Same JSON shape as the master CV from `cv:current`, keeping every field.
 - Keep `personal`, dates, company names and institutions exactly as they are.
 - With `en`, translate every text field into English. Keep names of companies, products, technologies and certifications as written. With `it`, keep Italian.
 - Plain words, no em dashes, no puffery ("passionate", "results-driven", "dynamic"). Name numbers and tools, not qualities.
+
+## Keywords
+
+The 10 to 20 terms in the offer that a recruiter or an applicant tracking system would screen for: tools, methods, domains, certifications, languages and role titles. Write each term as the offer writes it, in the offer's language. Leave out generic words such as "teamwork" or "motivation".
+
+- A term is covered only if the tailored CV shows it, in those words or a plain synonym. A term the master CV supports but the tailored CV left out is not covered: add it to the tailored CV if it fits, otherwise mark it missing.
+- A missing term the master CV hints at but does not state is a candidate for a suggestion below. A missing term the master CV does not support stays missing. Never add it to the CV.
+- In `kit:save`, `keywords` holds one `{"term": "...", "covered": true|false}` per term.
 
 ## Steps
 

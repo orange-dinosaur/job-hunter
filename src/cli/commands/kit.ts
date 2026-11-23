@@ -16,13 +16,16 @@ const kitInput = z.strictObject({
   cv: z.record(z.string(), z.unknown()),
   steps: z.string().min(1),
   suggestions: z.array(z.unknown()),
+  keywords: z.array(
+    z.strictObject({ term: z.string().trim().min(1), covered: z.boolean() }),
+  ),
 });
 
 const letterInput = z.strictObject({ text: z.string().trim().min(1) });
 
 export const kitCommands: Record<string, Command> = {
   "kit:save": {
-    help: "Save an application kit and mark the offer prepared (--id, --lang it|en, stdin: cv, steps, suggestions)",
+    help: "Save an application kit and mark the offer prepared (--id, --lang it|en, stdin: cv, steps, suggestions, keywords)",
     options: { id: { type: "string" }, lang: { type: "string" } },
     stdin: true,
     run(ctx, flags, stdin) {
@@ -44,6 +47,10 @@ export const kitCommands: Record<string, Command> = {
       writeFileSync(
         join(dir, "suggestions.json"),
         JSON.stringify(kit.suggestions, null, 2) + "\n",
+      );
+      writeFileSync(
+        join(dir, "keywords.json"),
+        JSON.stringify(kit.keywords, null, 2) + "\n",
       );
       markPrepared(ctx.db, id);
       return { dir, status: getOffer(ctx.db, id)!.status };
