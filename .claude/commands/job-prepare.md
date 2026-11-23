@@ -14,12 +14,13 @@ To pass JSON to a `jh` command, write it with the Write tool to a file in `data/
 3. Run `bun run jh cv:current`. If there is no CV, stop and say to run `/cv-import` first.
 4. Run `bun run jh suggestions:list --status open`.
 5. Write the tailored CV, the keywords, the steps and the suggestions as described below.
-6. Record each suggestion, one at a time, by writing its JSON to `data/tmp/suggestion.json` and running `bun run jh suggestions:add --input data/tmp/suggestion.json`. Keep the `id` it prints. The JSON is:
+6. Fact-check the tailored CV as described under "Fact-check" below.
+7. Record each suggestion, one at a time, by writing its JSON to `data/tmp/suggestion.json` and running `bun run jh suggestions:add --input data/tmp/suggestion.json`. Keep the `id` it prints. The JSON is:
    - one that matches an open suggestion: `{"id": <its id>, "offer_id": "<offer id>"}`,
    - a new one: `{"text": "...", "offer_id": "<offer id>"}`.
-7. Write `{"cv": {...}, "steps": "...", "suggestions": [...], "keywords": [...]}` to `data/tmp/kit.json` and run `bun run jh kit:save --id <offer id> --lang <lang> --input data/tmp/kit.json`. Keep the `dir` it prints.
-8. Run `bun run jh cv:render --file <dir>/cv.json --lang <lang> --out <dir>/cv.pdf`. If it reports invalid fields, fix them in the CV, save again with step 7, and render again.
-9. Reply with the PDF path, the offer status, what you changed in the CV and why, the missing keywords, and the suggestions with whether each was new or matched.
+8. Write `{"cv": {...}, "steps": "...", "suggestions": [...], "keywords": [...], "unsupported": [...]}` to `data/tmp/kit.json` and run `bun run jh kit:save --id <offer id> --lang <lang> --input data/tmp/kit.json`. Keep the `dir` it prints.
+9. Run `bun run jh cv:render --file <dir>/cv.json --lang <lang> --out <dir>/cv.pdf`. If it reports invalid fields, fix them in the CV, save again with step 8, and render again.
+10. Reply with the PDF path, the offer status, what you changed in the CV and why, the missing keywords, the unsupported claims, and the suggestions with whether each was new or matched.
 
 ## Honesty rule
 
@@ -44,6 +45,14 @@ The 10 to 20 terms in the offer that a recruiter or an applicant tracking system
 - A term is covered only if the tailored CV shows it, in those words or a plain synonym. A term the master CV supports but the tailored CV left out is not covered: add it to the tailored CV if it fits, otherwise mark it missing.
 - A missing term the master CV hints at but does not state is a candidate for a suggestion below. A missing term the master CV does not support stays missing. Never add it to the CV.
 - In `kit:save`, `keywords` holds one `{"term": "...", "covered": true|false}` per term.
+
+## Fact-check
+
+Go through the tailored CV field by field and check every number, employer, job title, date and skill against the master CV. A claim is supported only if the master CV states it, in the same words or a plain synonym. A reworded bullet that now says more than the original (a bigger scope, a different role, "consulting" for "support") is not supported.
+
+- First remove or reword whatever breaks the honesty rule. Then check the CV again as it will be saved.
+- List every claim you still cannot match to the master CV, even ones you think are fine. Do not change the CV after this list, so it matches what is saved.
+- In `kit:save`, `unsupported` holds one `{"claim": "...", "where": "..."}` per claim, where `where` names the field, such as "summary" or "experience, Rekeep, bullet 2". An empty list means every claim checked out.
 
 ## Steps
 

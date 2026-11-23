@@ -15,12 +15,21 @@ To pass JSON to a `jh` command, write it with the Write tool to a file in `data/
 4. Read `prompts/unslop.md`.
 5. Write the letter as described below.
 6. Check your draft against every pattern in `prompts/unslop.md`, then ask yourself what still makes it read as written by AI. Rewrite until nothing does.
-7. Write `{"text": "<the letter>"}` to `data/tmp/letter.json` and run `bun run jh letter:save --id <offer id> --lang <lang> --input data/tmp/letter.json`. It saves the text, renders the PDF and prints `words`. If `words` is outside 170 to 220, shorten or lengthen the letter and save again.
-8. Reply with the PDF path, the word count, and which facts from the CV the letter uses for which requirements of the offer.
+7. Fact-check the letter as described under "Fact-check" below.
+8. Write `{"text": "<the letter>", "unsupported": [...]}` to `data/tmp/letter.json` and run `bun run jh letter:save --id <offer id> --lang <lang> --input data/tmp/letter.json`. It saves the text, renders the PDF and prints `words`. If `words` is outside 170 to 220, shorten or lengthen the letter, fact-check it again and save again.
+9. Reply with the PDF path, the word count, which facts from the CV the letter uses for which requirements of the offer, and the unsupported claims.
 
 ## Honesty rule
 
 The letter may only use experience, skills and results the master CV shows. A requirement of the offer that the master CV does not show is a gap. Never claim it, not even softened ("familiarity with", "exposure to", "quick to learn"). Do not list gaps either: the letter is about what the candidate brings, and leaves out what is missing.
+
+## Fact-check
+
+Go through the letter sentence by sentence and check every number, employer, job title, date and skill against the master CV. A claim is supported only if the master CV states it, in the same words or a plain synonym. A sentence that says more than the CV (a bigger scope, a different role, a result the CV does not give) is not supported.
+
+- First remove or reword whatever breaks the honesty rule. Then check the letter again as it will be saved.
+- List every claim you still cannot match to the master CV, even ones you think are fine. Do not change the letter after this list, so it matches what is saved.
+- In `letter:save`, `unsupported` holds one `{"claim": "...", "where": "..."}` per claim, where `where` names the paragraph, such as "paragraph 2". An empty list means every claim checked out.
 
 ## The letter
 

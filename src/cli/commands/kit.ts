@@ -12,6 +12,16 @@ import {
   type Command,
 } from "../command.ts";
 
+// Claims in the output the master CV does not support. An empty list means checked and clean.
+const unsupported = z.array(
+  z.strictObject({
+    claim: z.string().trim().min(1),
+    where: z.string().trim().min(1),
+  }),
+);
+
+const json = (value: unknown) => JSON.stringify(value, null, 2) + "\n";
+
 const kitInput = z.strictObject({
   cv: z.record(z.string(), z.unknown()),
   steps: z.string().min(1),
@@ -19,13 +29,17 @@ const kitInput = z.strictObject({
   keywords: z.array(
     z.strictObject({ term: z.string().trim().min(1), covered: z.boolean() }),
   ),
+  unsupported,
 });
 
-const letterInput = z.strictObject({ text: z.string().trim().min(1) });
+const letterInput = z.strictObject({
+  text: z.string().trim().min(1),
+  unsupported,
+});
 
 export const kitCommands: Record<string, Command> = {
   "kit:save": {
-    help: "Save an application kit and mark the offer prepared (--id, --lang it|en, stdin: cv, steps, suggestions, keywords)",
+    help: "Save an application kit and mark the offer prepared (--id, --lang it|en, stdin: cv, steps, suggestions, keywords, unsupported)",
     options: { id: { type: "string" }, lang: { type: "string" } },
     stdin: true,
     run(ctx, flags, stdin) {
@@ -39,25 +53,17 @@ export const kitCommands: Record<string, Command> = {
 
       const dir = join(ctx.dataDir, "offers", id, `kit-${lang}`);
       mkdirSync(dir, { recursive: true });
-      writeFileSync(
-        join(dir, "cv.json"),
-        JSON.stringify(kit.cv, null, 2) + "\n",
-      );
+      writeFileSync(join(dir, "cv.json"), json(kit.cv));
       writeFileSync(join(dir, "steps.md"), kit.steps.trimEnd() + "\n");
-      writeFileSync(
-        join(dir, "suggestions.json"),
-        JSON.stringify(kit.suggestions, null, 2) + "\n",
-      );
-      writeFileSync(
-        join(dir, "keywords.json"),
-        JSON.stringify(kit.keywords, null, 2) + "\n",
-      );
+      writeFileSync(join(dir, "suggestions.json"), json(kit.suggestions));
+      writeFileSync(join(dir, "keywords.json"), json(kit.keywords));
+      writeFileSync(join(dir, "factcheck.json"), json(kit.unsupported));
       markPrepared(ctx.db, id);
       return { dir, status: getOffer(ctx.db, id)!.status };
     },
   },
   "letter:save": {
-    help: "Save a cover letter and render its PDF (--id, --lang it|en, stdin: text)",
+    help: "Save a cover letter and render its PDF (--id, --lang it|en, stdin: text, unsupported)",
     options: { id: { type: "string" }, lang: { type: "string" } },
     stdin: true,
     run(ctx, flags, stdin) {
@@ -69,11 +75,12 @@ export const kitCommands: Record<string, Command> = {
       if (!offer) throw new CommandError(`no offer ${id}`);
       const cv = currentCv(ctx.db, ctx.dataDir);
       if (!cv) throw new CommandError("no master CV");
-      const { text } = readInput(letterInput, stdin);
+      const { text, unsupported } = readInput(letterInput, stdin);
 
       const base = join(ctx.dataDir, "offers", id, `cover-letter-${lang}`);
       mkdirSync(dirname(base), { recursive: true });
       writeFileSync(`${base}.md`, text.trim() + "\n");
+      writeFileSync(`${base}.factcheck.json`, json(unsupported));
       renderLetter(
         letterView(masterCvSchema.parse(cv.cv).personal, offer, text, lang),
         `${base}.pdf`,
