@@ -114,7 +114,14 @@ export function OfferDetailPage(props: {
             Found on {offer.sources.join(", ")}
             {offer.posted_at && `, posted ${offer.posted_at}`}
             {offer.salary_text && ` · ${offer.salary_text}`}
+            {` · First seen ${new Date(offer.first_seen_at).toLocaleDateString(
+              undefined,
+              { day: "numeric", month: "short" },
+            )}, in ${offer.seen_runs} ${offer.seen_runs === 1 ? "run" : "runs"}`}
           </span>
+          {offer.old_posting && (
+            <strong className="error-text"> · Old posting</strong>
+          )}
           {offer.url && (
             <>
               {" · "}

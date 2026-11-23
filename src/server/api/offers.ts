@@ -5,6 +5,7 @@ import {
   followUpDue,
   getOffer,
   listOffers,
+  oldPosting,
   setStatus,
 } from "../../db/offers.ts";
 import { getRun, latestRunId } from "../../db/runs.ts";
@@ -29,6 +30,7 @@ export function offersRoutes(db: Database) {
             kits: kitLangs(DATA_DIR, o.id),
             band: bandFor(o.fit_score, bands),
             follow_up_due: followUpDue(o, follow_up_days),
+            old_posting: oldPosting(o.first_seen_at),
           })),
           // Across all runs: an applied offer may not be in the latest search.
           follow_ups_due: listOffers(db, null).filter((o) =>

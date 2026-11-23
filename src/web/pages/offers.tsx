@@ -11,6 +11,7 @@ interface OffersResponse {
     kits: string[];
     band: Band | null;
     follow_up_due: boolean;
+    old_posting: boolean;
   })[];
   follow_ups_due: number;
 }
@@ -230,6 +231,9 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                       >
                         {o.title}
                       </a>
+                      {o.old_posting && (
+                        <span className="muted"> Old posting</span>
+                      )}
                     </td>
                     <td>{o.locations.join("; ")}</td>
                     <td>{o.sources.join(", ")}</td>

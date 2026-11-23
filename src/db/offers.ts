@@ -209,9 +209,7 @@ export function getOffer(
 ): (Offer & { scores: ScoredCriterion[]; gaps: string[] }) | null {
   const row = db
     .query<OfferRow, [string]>(
-      `SELECT *, ${appliedAt} AS applied_at,
-         coalesce((SELECT r.started_at FROM search_runs r WHERE r.id = offers.first_seen_run_id),
-           created_at) AS first_seen_at
+      `SELECT *, ${appliedAt} AS applied_at, ${firstSeenAt} AS first_seen_at
        FROM offers WHERE id = ?`,
     )
     .get(id);
@@ -346,10 +344,13 @@ export interface OfferSummary {
   gap_count: number;
   applied_at: string | null;
   followed_up_at: string | null;
+  first_seen_at: string;
 }
 
 const appliedAt =
   "(SELECT max(h.at) FROM status_history h WHERE h.offer_id = offers.id AND h.status = 'applied')";
+const firstSeenAt =
+  "coalesce((SELECT r.started_at FROM search_runs r WHERE r.id = offers.first_seen_run_id), created_at)";
 const hasScores =
   "EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)";
 const scoreFilters = {
@@ -375,7 +376,7 @@ export function listOffers(
       [number | null, string | null, number]
     >(
       `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker,
-         followed_up_at, ${appliedAt} AS applied_at,
+         followed_up_at, ${appliedAt} AS applied_at, ${firstSeenAt} AS first_seen_at,
          (SELECT count(*) FROM offer_gaps g WHERE g.offer_id = offers.id) AS gap_count
        FROM offers WHERE (?1 IS NULL OR last_seen_run_id = ?1) AND status != 'discarded'
          AND (?2 IS NULL OR scored_at IS NULL OR scored_at < ?2)
