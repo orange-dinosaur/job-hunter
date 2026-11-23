@@ -3,7 +3,10 @@ import { migrate, openDb } from "./migrate.ts";
 import { migrations } from "./schema.ts";
 import {
   dedupeKey,
+  followUpDue,
   getOffer,
+  markFollowedUp,
+  markPrepared,
   refitScores,
   setScores,
   setStatus,
@@ -215,4 +218,55 @@ test("refitScores recomputes fit scores with new weights and skips dealbreakers"
   expect(getOffer(db, kept!)!.fit_score).toBe(60);
   expect(getOffer(db, unscored!)!.fit_score).toBeNull();
   expect(getOffer(db, blocked!)!.fit_score).toBeNull();
+});
+
+test("status changes are recorded and set applied_at", () => {
+  const db = openDb(":memory:");
+  const id = upsertOffers(
+    db,
+    [{ source: "indeed", title: "PM", company: "A" }],
+    null,
+  ).new[0]!;
+  markPrepared(db, id);
+  setStatus(db, id, "applied");
+  setStatus(db, id, "applied", "same status, no new row");
+  const history = db
+    .query<{ status: string }, [string]>(
+      "SELECT status FROM status_history WHERE offer_id = ? ORDER BY rowid",
+    )
+    .all(id)
+    .map((h) => h.status);
+  expect(history).toEqual(["new", "prepared", "applied"]);
+
+  const offer = getOffer(db, id)!;
+  expect(offer.applied_at).not.toBeNull();
+  expect(offer.followed_up_at).toBeNull();
+  markFollowedUp(db, id);
+  expect(getOffer(db, id)!.followed_up_at).not.toBeNull();
+});
+
+test("follow-up due rules with 7 and 14 days", () => {
+  const days: [number, number] = [7, 14];
+  const at = new Date("2026-03-30T12:00:00Z");
+  type DueInput = Parameters<typeof followUpDue>[0];
+  const offer = (applied: string, followedUp: string | null = null) => ({
+    status: "applied" as DueInput["status"],
+    applied_at: `${applied}T12:00:00Z` as string | null,
+    followed_up_at: followedUp && `${followedUp}T12:00:00Z`,
+  });
+  const due = (o: DueInput) => followUpDue(o, days, at);
+
+  // No follow-up yet: due from day 7.
+  expect(due(offer("2026-03-24"))).toBe(false); // day 6
+  expect(due(offer("2026-03-23"))).toBe(true); // day 7
+  expect(due({ ...offer("2026-03-01"), status: "interview" })).toBe(false);
+  expect(due({ ...offer("2026-03-01"), applied_at: null })).toBe(false);
+
+  // One follow-up: due again from day 14, once it is 7 days old.
+  expect(due(offer("2026-03-17", "2026-03-24"))).toBe(false); // day 13
+  expect(due(offer("2026-03-16", "2026-03-23"))).toBe(true); // day 14, 7 days old
+  expect(due(offer("2026-03-16", "2026-03-25"))).toBe(false); // 5 days old
+
+  // A follow-up on or after day 14 is the second: nothing more comes due.
+  expect(due(offer("2026-03-01", "2026-03-15"))).toBe(false);
 });

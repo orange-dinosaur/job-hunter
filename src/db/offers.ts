@@ -45,6 +45,9 @@ export interface Offer {
   fit_score: number | null;
   dealbreaker: string | null;
   scored_at: string | null;
+  followed_up_at: string | null;
+  // When the offer last moved to `applied`, from the status history.
+  applied_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -199,7 +202,9 @@ export function getOffer(
   id: string,
 ): (Offer & { scores: ScoredCriterion[]; gaps: string[] }) | null {
   const row = db
-    .query<OfferRow, [string]>("SELECT * FROM offers WHERE id = ?")
+    .query<OfferRow, [string]>(
+      `SELECT *, ${appliedAt} AS applied_at FROM offers WHERE id = ?`,
+    )
     .get(id);
   if (!row) return null;
   const scores = db
@@ -284,6 +289,31 @@ export function setStatus(
   );
 }
 
+export function markFollowedUp(db: Database, id: string): void {
+  db.run("UPDATE offers SET followed_up_at = ? WHERE id = ?", [now(), id]);
+}
+
+const DAY_MS = 86_400_000;
+const daysSince = (iso: string, at: Date) =>
+  (at.getTime() - Date.parse(iso)) / DAY_MS;
+
+// An applied offer is due a first follow-up `first` days after applying, and a
+// second one `second` days after applying once the first is `first` days old.
+// A follow-up made on or after day `second` counts as the second, so nothing
+// comes due after it.
+export function followUpDue(
+  offer: Pick<Offer, "status" | "applied_at" | "followed_up_at">,
+  [first, second]: [number, number],
+  at = new Date(),
+): boolean {
+  if (offer.status !== "applied" || !offer.applied_at) return false;
+  const applied = daysSince(offer.applied_at, at);
+  if (!offer.followed_up_at) return applied >= first;
+  const sinceFollowUp = daysSince(offer.followed_up_at, at);
+  const followUpDay = applied - sinceFollowUp;
+  return applied >= second && sinceFollowUp >= first && followUpDay < second;
+}
+
 // Creating a kit moves an offer forward to `prepared`, never back.
 export function markPrepared(db: Database, id: string): void {
   db.run(
@@ -302,8 +332,12 @@ export interface OfferSummary {
   fit_score: number | null;
   dealbreaker: string | null;
   gap_count: number;
+  applied_at: string | null;
+  followed_up_at: string | null;
 }
 
+const appliedAt =
+  "(SELECT max(h.at) FROM status_history h WHERE h.offer_id = offers.id AND h.status = 'applied')";
 const hasScores =
   "EXISTS (SELECT 1 FROM offer_scores s WHERE s.offer_id = offers.id)";
 const scoreFilters = {
@@ -329,6 +363,7 @@ export function listOffers(
       [number | null, string | null, number]
     >(
       `SELECT id, title, company, locations, sources, status, fit_score, dealbreaker,
+         followed_up_at, ${appliedAt} AS applied_at,
          (SELECT count(*) FROM offer_gaps g WHERE g.offer_id = offers.id) AS gap_count
        FROM offers WHERE (?1 IS NULL OR last_seen_run_id = ?1) AND status != 'discarded'
          AND (?2 IS NULL OR scored_at IS NULL OR scored_at < ?2)

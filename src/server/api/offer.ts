@@ -4,7 +4,12 @@ import { join } from "node:path";
 import { z } from "zod";
 import { langs } from "../../cv/render.ts";
 import { DATA_DIR } from "../../db/migrate.ts";
-import { getOffer, offerStatuses, setStatus } from "../../db/offers.ts";
+import {
+  followUpDue,
+  getOffer,
+  offerStatuses,
+  setStatus,
+} from "../../db/offers.ts";
 import { loadProfile } from "../../profile/load.ts";
 import type { OperationType } from "../../runner/models.ts";
 import { bandFor } from "../../scoring.ts";
@@ -90,6 +95,7 @@ function detail(db: Database, dataDir: string, id: string) {
     text: existsSync(file) ? readFileSync(file, "utf8") : null,
     weights: profile.weights,
     band: bandFor(offer.fit_score, profile.bands),
+    follow_up_due: followUpDue(offer, profile.follow_up_days),
     kits: kitLangs(dataDir, id).map((lang) => readKit(dataDir, id, lang)),
     kit_operation: latest("application_kit"),
     letters: readLetters(dataDir, id),

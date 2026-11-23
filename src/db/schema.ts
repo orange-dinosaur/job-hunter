@@ -118,4 +118,25 @@ export const migrations: string[] = [
   );
   `,
   `ALTER TABLE offers ADD COLUMN scored_at TEXT;`,
+  `
+  CREATE TABLE status_history (
+    offer_id TEXT NOT NULL REFERENCES offers(id),
+    status TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+  CREATE INDEX status_history_offer ON status_history(offer_id);
+  INSERT INTO status_history SELECT id, status, updated_at FROM offers;
+  ALTER TABLE offers ADD COLUMN followed_up_at TEXT;
+
+  -- Every status write records itself, whichever code path makes it.
+  CREATE TRIGGER offers_status_insert AFTER INSERT ON offers
+  BEGIN
+    INSERT INTO status_history VALUES (NEW.id, NEW.status, NEW.updated_at);
+  END;
+  CREATE TRIGGER offers_status_update AFTER UPDATE OF status ON offers
+    WHEN OLD.status != NEW.status
+  BEGIN
+    INSERT INTO status_history VALUES (NEW.id, NEW.status, NEW.updated_at);
+  END;
+  `,
 ];
