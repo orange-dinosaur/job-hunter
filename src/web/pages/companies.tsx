@@ -1,6 +1,13 @@
 import { useEffect, useState } from "react";
 import type { CompanySummary } from "../../db/companies.ts";
 import type { Band } from "../../scoring.ts";
+import type { SearchOperation } from "../../server/api/runs.ts";
+import { OperationNotice } from "./offer-detail.tsx";
+
+const POLL_MS = 3000;
+
+const active = (op: SearchOperation | null) =>
+  op?.status === "queued" || op?.status === "running";
 
 type Company = Omit<CompanySummary, "offers"> & {
   offers: (CompanySummary["offers"][number] & { band: Band | null })[];
@@ -38,6 +45,9 @@ const filters = { sector: "", size: "", kind: "", location: "" };
 export function CompaniesPage(props: { navigate: (path: string) => void }) {
   const [companies, setCompanies] = useState<Company[] | null>(null);
   const [f, setF] = useState(filters);
+  const [search, setSearch] = useState<SearchOperation | null>(null);
+  // Bumped when a search ends, to load the list again.
+  const [reloads, setReloads] = useState(0);
 
   useEffect(() => {
     Object.assign(filters, f);
@@ -47,7 +57,31 @@ export function CompaniesPage(props: { navigate: (path: string) => void }) {
     fetch(`/api/companies?${q}`)
       .then((r) => r.json())
       .then(setCompanies);
-  }, [f]);
+  }, [f, reloads]);
+
+  useEffect(() => {
+    fetch("/api/companies/search")
+      .then((r) => r.json())
+      .then(setSearch);
+  }, []);
+
+  // Poll while a search runs, then reload the list once it ends.
+  useEffect(() => {
+    if (!active(search)) return;
+    const timer = setTimeout(async () => {
+      const next: SearchOperation = await (
+        await fetch("/api/companies/search")
+      ).json();
+      setSearch(next);
+      if (!active(next)) setReloads((n) => n + 1);
+    }, POLL_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const findCompanies = async () =>
+    setSearch(
+      await (await fetch("/api/companies/search", { method: "POST" })).json(),
+    );
 
   const star = async (key: string) => {
     const r = await fetch(`/api/companies/${encodeURIComponent(key)}/watch`, {
@@ -89,7 +123,16 @@ export function CompaniesPage(props: { navigate: (path: string) => void }) {
     <div className="fill">
       <div className="toolbar">
         <h1>Companies</h1>
+        <button onClick={findCompanies} disabled={active(search)}>
+          Find companies
+        </button>
       </div>
+      <OperationNotice
+        op={search}
+        what="company search"
+        doing="web searches for companies near your places"
+        saved
+      />
       <div className="filters">
         {select("sector", "Sector", sectorLabels)}
         {select("size", "Size", sizeLabels)}

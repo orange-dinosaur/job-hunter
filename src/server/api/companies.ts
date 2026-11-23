@@ -3,9 +3,18 @@ import { join } from "node:path";
 import { listCompanies, toggleWatched } from "../../db/companies.ts";
 import { DATA_DIR } from "../../db/migrate.ts";
 import { loadProfile } from "../../profile/load.ts";
+import { runOperation } from "../../runner/run-claude.ts";
 import { bandFor } from "../../scoring.ts";
+import type { SearchOperation } from "./runs.ts";
 
 export function companiesRoutes(db: Database, dataDir = DATA_DIR) {
+  const latestSearch = () =>
+    db
+      .query<SearchOperation, []>(
+        "SELECT id, status, started_at, finished_at, error FROM operations WHERE type = 'company_search' ORDER BY id DESC LIMIT 1",
+      )
+      .get();
+
   return {
     "/api/companies": {
       GET(req: Request) {
@@ -25,6 +34,14 @@ export function companiesRoutes(db: Database, dataDir = DATA_DIR) {
           })),
         }));
         return Response.json(companies);
+      },
+    },
+    // The latest company search, which the page polls while it runs.
+    "/api/companies/search": {
+      GET: () => Response.json(latestSearch()),
+      POST() {
+        runOperation(db, "company_search");
+        return Response.json(latestSearch());
       },
     },
     "/api/companies/:key/watch": {
