@@ -60,6 +60,8 @@ test("a saved kit shows on the offer and its PDF is served", async () => {
       has_pdf: true,
       steps: "## Where to apply\n",
       suggestions: [{ id: 1, text: "Add ERP" }],
+      keywords: null,
+      unsupported: null,
     },
   ] as never);
   expect(offer.kit_operation).toBeNull();
@@ -75,11 +77,12 @@ test("a saved cover letter shows its text and its PDF is served", async () => {
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, "cover-letter-it.md"), "Buongiorno,\n");
   writeFileSync(join(dir, "cover-letter-it.pdf"), "%PDF-1.4");
+  writeFileSync(join(dir, "cover-letter-it.factcheck.json"), "[]");
 
   const r = await call(routes["/api/offers/:id"].GET, { id });
   const offer = (await r.json()) as OfferDetail;
   expect(offer.letters).toEqual([
-    { lang: "it", text: "Buongiorno,\n", has_pdf: true },
+    { lang: "it", text: "Buongiorno,\n", has_pdf: true, unsupported: [] },
   ]);
   expect(offer.letter_operation).toBeNull();
 

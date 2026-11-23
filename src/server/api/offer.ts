@@ -28,18 +28,29 @@ const kitDir = (dataDir: string, id: string, lang: string) =>
 export const kitLangs = (dataDir: string, id: string) =>
   langs.filter((lang) => existsSync(kitDir(dataDir, id, lang)));
 
+const readText = (file: string) =>
+  existsSync(file) ? readFileSync(file, "utf8") : null;
+
+// Null when the file is missing, which for older kits and letters means "never checked".
+function readJson<T>(file: string): T | null {
+  const text = readText(file);
+  return text == null ? null : JSON.parse(text);
+}
+
+type Unsupported = { claim: string; where: string }[];
+
 function readKit(dataDir: string, id: string, lang: string) {
   const dir = kitDir(dataDir, id, lang);
-  const read = (name: string) =>
-    existsSync(join(dir, name)) ? readFileSync(join(dir, name), "utf8") : null;
-  const suggestions = read("suggestions.json");
   return {
     lang,
     has_pdf: existsSync(join(dir, "cv.pdf")),
-    steps: read("steps.md"),
-    suggestions: (suggestions ? JSON.parse(suggestions) : []) as {
-      text?: string;
-    }[],
+    steps: readText(join(dir, "steps.md")),
+    suggestions:
+      readJson<{ text?: string }[]>(join(dir, "suggestions.json")) ?? [],
+    keywords: readJson<{ term: string; covered: boolean }[]>(
+      join(dir, "keywords.json"),
+    ),
+    unsupported: readJson<Unsupported>(join(dir, "factcheck.json")),
   };
 }
 
@@ -55,6 +66,9 @@ function readLetters(dataDir: string, id: string) {
         lang,
         text: readFileSync(md, "utf8"),
         has_pdf: existsSync(letterFile(dataDir, id, lang, "pdf")),
+        unsupported: readJson<Unsupported>(
+          letterFile(dataDir, id, lang, "factcheck.json"),
+        ),
       },
     ];
   });

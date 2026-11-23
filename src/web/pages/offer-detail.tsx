@@ -193,6 +193,7 @@ export function OfferDetailPage(props: {
             )}
             <CopyButton text={letter.text} />
           </p>
+          <FactCheck unsupported={letter.unsupported} />
           <pre className="offer-text">{letter.text}</pre>
         </section>
       ))}
@@ -213,6 +214,8 @@ export function OfferDetailPage(props: {
           ) : (
             <p className="muted">The tailored CV was not rendered.</p>
           )}
+          <FactCheck unsupported={kit.unsupported} />
+          <Keywords keywords={kit.keywords} />
           <h3>Steps to apply</h3>
           {kit.steps ? (
             <pre className="offer-text">{kit.steps}</pre>
@@ -324,6 +327,52 @@ export function OperationNotice(props: {
     <p className="notice error">
       The {what} run finished at {time(op.finished_at)} but saved nothing.
     </p>
+  );
+}
+
+// Null means the kit or letter was made before fact-checking existed.
+function FactCheck(props: {
+  unsupported: OfferDetail["letters"][number]["unsupported"];
+}) {
+  const claims = props.unsupported;
+  if (!claims) return <p className="muted">Not fact-checked.</p>;
+  if (!claims.length) return <p className="muted">Fact-check clean.</p>;
+  return (
+    <div className="notice error">
+      {claims.length} unsupported {claims.length === 1 ? "claim" : "claims"}
+      <ul>
+        {claims.map((c, i) => (
+          <li key={i}>
+            {c.claim} <span className="muted">({c.where})</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function Keywords(props: {
+  keywords: OfferDetail["kits"][number]["keywords"];
+}) {
+  const terms = props.keywords;
+  if (!terms)
+    return (
+      <>
+        <h3>Keyword coverage</h3>
+        <p className="muted">Not measured for this kit.</p>
+      </>
+    );
+  const covered = terms.filter((t) => t.covered).map((t) => t.term);
+  const missing = terms.filter((t) => !t.covered).map((t) => t.term);
+  return (
+    <>
+      <h3>
+        Keyword coverage{" "}
+        {terms.length ? Math.round((covered.length / terms.length) * 100) : 0}%
+      </h3>
+      <p>Covered: {covered.join(", ") || "none"}</p>
+      <p>Missing: {missing.join(", ") || "none"}</p>
+    </>
   );
 }
 
