@@ -7,7 +7,12 @@ import type { Band } from "../../scoring.ts";
 interface OffersResponse {
   has_cv: boolean;
   run: SearchRun | null;
-  offers: (OfferSummary & { kits: string[]; band: Band | null })[];
+  offers: (OfferSummary & {
+    kits: string[];
+    band: Band | null;
+    follow_up_due: boolean;
+  })[];
+  follow_ups_due: number;
 }
 
 const POLL_MS = 3000;
@@ -85,6 +90,10 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
           Run search
         </button>
       </div>
+
+      {data.follow_ups_due > 0 && (
+        <p className="notice error">Follow-ups due: {data.follow_ups_due}</p>
+      )}
 
       {active(search) && (
         <p className="notice">
@@ -225,7 +234,12 @@ export function OffersPage(props: { navigate: (path: string) => void }) {
                     <td>{o.locations.join("; ")}</td>
                     <td>{o.sources.join(", ")}</td>
                     <td className="num">{o.gap_count}</td>
-                    <td>{o.status}</td>
+                    <td>
+                      {o.status}
+                      {o.follow_up_due && (
+                        <strong className="error-text"> Follow up</strong>
+                      )}
+                    </td>
                     <td>{o.kits.join(", ")}</td>
                     <td>
                       <button className="link" onClick={() => discard(o.id)}>

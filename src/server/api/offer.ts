@@ -7,6 +7,7 @@ import { DATA_DIR } from "../../db/migrate.ts";
 import {
   followUpDue,
   getOffer,
+  markFollowedUp,
   offerStatuses,
   setStatus,
 } from "../../db/offers.ts";
@@ -79,6 +80,12 @@ function readLetters(dataDir: string, id: string) {
   });
 }
 
+const readFollowUps = (dataDir: string, id: string) =>
+  langs.flatMap((lang) => {
+    const text = readText(join(dataDir, "offers", id, `follow-up-${lang}.md`));
+    return text == null ? [] : [{ lang, text }];
+  });
+
 function detail(db: Database, dataDir: string, id: string) {
   const offer = getOffer(db, id);
   if (!offer) return null;
@@ -100,6 +107,8 @@ function detail(db: Database, dataDir: string, id: string) {
     kit_operation: latest("application_kit"),
     letters: readLetters(dataDir, id),
     letter_operation: latest("cover_letter"),
+    follow_ups: readFollowUps(dataDir, id),
+    follow_up_operation: latest("follow_up"),
   };
 }
 
@@ -137,6 +146,17 @@ export function offerRoutes(db: Database, dataDir = DATA_DIR) {
     "/api/offers/:id/cover-letter": {
       POST: (req: Bun.BunRequest<"/api/offers/:id/cover-letter">) =>
         start(req, "cover_letter"),
+    },
+    "/api/offers/:id/follow-up": {
+      POST: (req: Bun.BunRequest<"/api/offers/:id/follow-up">) =>
+        start(req, "follow_up"),
+    },
+    "/api/offers/:id/followed-up": {
+      POST(req: Bun.BunRequest<"/api/offers/:id/followed-up">) {
+        if (!getOffer(db, req.params.id)) return notFound();
+        markFollowedUp(db, req.params.id);
+        return Response.json(detail(db, dataDir, req.params.id));
+      },
     },
     "/api/offers/:id/kit/:lang/cv.pdf": {
       GET: (req: Bun.BunRequest<"/api/offers/:id/kit/:lang/cv.pdf">) =>

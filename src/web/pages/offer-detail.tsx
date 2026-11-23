@@ -43,7 +43,9 @@ export function OfferDetailPage(props: {
 
   // Poll while a kit or letter runs. Status edits in progress are kept until both end.
   const running = (o: OfferDetail | null) =>
-    active(o?.kit_operation ?? null) || active(o?.letter_operation ?? null);
+    active(o?.kit_operation ?? null) ||
+    active(o?.letter_operation ?? null) ||
+    active(o?.follow_up_operation ?? null);
   useEffect(() => {
     if (!running(offer)) return;
     const timer = setTimeout(async () => {
@@ -79,6 +81,8 @@ export function OfferDetailPage(props: {
   const save = () => post("status", { status, note });
   const prepare = () => post("prepare", { lang });
   const writeLetter = () => post("cover-letter", { lang });
+  const draftFollowUp = () => post("follow-up", { lang });
+  const followedUp = () => post("followed-up", {});
 
   const changed = status !== offer.status || note !== (offer.status_note ?? "");
   const weights: Record<string, number> = offer.weights;
@@ -162,9 +166,35 @@ export function OfferDetailPage(props: {
           >
             Cover letter
           </button>
+          {offer.status === "applied" && (
+            <button
+              onClick={draftFollowUp}
+              disabled={active(offer.follow_up_operation)}
+            >
+              Draft follow-up
+            </button>
+          )}
         </div>
       </div>
       {saveError && <p className="notice error">{saveError}</p>}
+      {offer.status === "applied" && (
+        <p className={offer.follow_up_due ? "notice error" : "notice"}>
+          {offer.follow_up_due ? "Follow up: " : ""}
+          Applied {time(offer.applied_at)}
+          {offer.followed_up_at &&
+            `, last followed up ${time(offer.followed_up_at)}`}
+          .{" "}
+          <button className="link" onClick={followedUp}>
+            Followed up
+          </button>
+        </p>
+      )}
+      <OperationNotice
+        op={offer.follow_up_operation}
+        what="follow-up"
+        doing="a short follow-up email"
+        saved={offer.follow_ups.length > 0}
+      />
       <OperationNotice
         op={offer.kit_operation}
         what="kit"
@@ -178,24 +208,24 @@ export function OfferDetailPage(props: {
         saved={offer.letters.length > 0}
       />
 
+      {offer.follow_ups.map((f) => (
+        <TextDraft key={`f-${f.lang}`} title="Follow-up" {...f} />
+      ))}
+
       {offer.letters.map((letter) => (
-        <section key={letter.lang}>
-          <h2>Cover letter ({letter.lang})</h2>
-          <p className="filters">
-            {letter.has_pdf && (
-              <a
-                href={`/api/offers/${offer.id}/letter/${letter.lang}/cover-letter.pdf`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Cover letter (PDF)
-              </a>
-            )}
-            <CopyButton text={letter.text} />
-          </p>
+        <TextDraft
+          key={letter.lang}
+          title="Cover letter"
+          lang={letter.lang}
+          text={letter.text}
+          pdf={
+            letter.has_pdf
+              ? `/api/offers/${offer.id}/letter/${letter.lang}/cover-letter.pdf`
+              : null
+          }
+        >
           <FactCheck unsupported={letter.unsupported} />
-          <pre className="offer-text">{letter.text}</pre>
-        </section>
+        </TextDraft>
       ))}
 
       {offer.kits.map((kit) => (
@@ -327,6 +357,33 @@ export function OperationNotice(props: {
     <p className="notice error">
       The {what} run finished at {time(op.finished_at)} but saved nothing.
     </p>
+  );
+}
+
+// A saved text with a copy button, and a PDF link when there is one.
+function TextDraft(props: {
+  title: string;
+  lang: string;
+  text: string;
+  pdf?: string | null;
+  children?: React.ReactNode;
+}) {
+  return (
+    <section>
+      <h2>
+        {props.title} ({props.lang})
+      </h2>
+      <p className="filters">
+        {props.pdf && (
+          <a href={props.pdf} target="_blank" rel="noreferrer">
+            {props.title} (PDF)
+          </a>
+        )}
+        <CopyButton text={props.text} />
+      </p>
+      {props.children}
+      <pre className="offer-text">{props.text}</pre>
+    </section>
   );
 }
 
