@@ -139,4 +139,8 @@ export const migrations: string[] = [
     INSERT INTO status_history VALUES (NEW.id, NEW.status, NEW.updated_at);
   END;
   `,
+  `
+  ALTER TABLE offers ADD COLUMN seen_runs INTEGER NOT NULL DEFAULT 1;
+  UPDATE offers SET seen_runs = 2 WHERE first_seen_run_id != last_seen_run_id;
+  `,
 ];

@@ -48,6 +48,10 @@ export interface Offer {
   followed_up_at: string | null;
   // When the offer last moved to `applied`, from the status history.
   applied_at: string | null;
+  // How many search runs have returned this offer.
+  seen_runs: number;
+  // When the run that first found it started, or when it was added.
+  first_seen_at: string;
   created_at: string;
   updated_at: string;
 }
@@ -136,7 +140,9 @@ export function upsertOffers(
        $salary_text, $language, $posted_at, $run, $run)`,
   );
   const merge = db.query(
-    `UPDATE offers SET sources = $sources, locations = $locations, last_seen_run_id = $run,
+    `UPDATE offers SET sources = $sources, locations = $locations,
+       seen_runs = seen_runs + ($run IS NOT NULL AND last_seen_run_id IS NOT $run),
+       last_seen_run_id = $run,
        url = coalesce(url, $url), remote = coalesce(remote, $remote),
        salary_text = coalesce(salary_text, $salary_text), language = coalesce(language, $language),
        posted_at = coalesce(posted_at, $posted_at), updated_at = $now
@@ -203,7 +209,10 @@ export function getOffer(
 ): (Offer & { scores: ScoredCriterion[]; gaps: string[] }) | null {
   const row = db
     .query<OfferRow, [string]>(
-      `SELECT *, ${appliedAt} AS applied_at FROM offers WHERE id = ?`,
+      `SELECT *, ${appliedAt} AS applied_at,
+         coalesce((SELECT r.started_at FROM search_runs r WHERE r.id = offers.first_seen_run_id),
+           created_at) AS first_seen_at
+       FROM offers WHERE id = ?`,
     )
     .get(id);
   if (!row) return null;
@@ -313,6 +322,9 @@ export function followUpDue(
   const followUpDay = applied - sinceFollowUp;
   return applied >= second && sinceFollowUp >= first && followUpDay < second;
 }
+
+export const oldPosting = (firstSeenAt: string, at = new Date()) =>
+  daysSince(firstSeenAt, at) > 30;
 
 // Creating a kit moves an offer forward to `prepared`, never back.
 export function markPrepared(db: Database, id: string): void {

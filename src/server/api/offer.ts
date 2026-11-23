@@ -9,6 +9,7 @@ import {
   getOffer,
   markFollowedUp,
   offerStatuses,
+  oldPosting,
   setStatus,
 } from "../../db/offers.ts";
 import { loadProfile } from "../../profile/load.ts";
@@ -103,6 +104,7 @@ function detail(db: Database, dataDir: string, id: string) {
     weights: profile.weights,
     band: bandFor(offer.fit_score, profile.bands),
     follow_up_due: followUpDue(offer, profile.follow_up_days),
+    old_posting: oldPosting(offer.first_seen_at),
     kits: kitLangs(dataDir, id).map((lang) => readKit(dataDir, id, lang)),
     kit_operation: latest("application_kit"),
     letters: readLetters(dataDir, id),

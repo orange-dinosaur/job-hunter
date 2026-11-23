@@ -7,6 +7,7 @@ import {
   getOffer,
   markFollowedUp,
   markPrepared,
+  oldPosting,
   refitScores,
   setScores,
   setStatus,
@@ -111,6 +112,35 @@ test("upsert by dedupe key merges sources and locations without duplicates", () 
     first_seen_run_id: run1,
     last_seen_run_id: run2,
   });
+});
+
+test("seen_runs grows once per run that returns the offer", () => {
+  const { db, run1, run2 } = setup();
+  db.run(
+    "UPDATE search_runs SET started_at = '2026-01-05T08:00:00Z' WHERE id = ?",
+    [run1],
+  );
+  const dev = { source: "indeed", title: "Dev", company: "Acme" };
+  const [id] = upsertOffers(
+    db,
+    [dev, { ...dev, source: "linkedin" }],
+    run1,
+  ).new;
+  expect(getOffer(db, id!)!.seen_runs).toBe(1);
+
+  upsertOffers(db, [dev, { ...dev, source: "linkedin" }], run2);
+  upsertOffers(db, [dev], run2);
+  upsertOffers(db, [dev], null);
+  const offer = getOffer(db, id!)!;
+  expect(offer.seen_runs).toBe(2);
+  expect(offer.first_seen_at).toBe("2026-01-05T08:00:00Z");
+
+  expect(
+    oldPosting(offer.first_seen_at, new Date("2026-02-04T08:00:00Z")),
+  ).toBe(false);
+  expect(
+    oldPosting(offer.first_seen_at, new Date("2026-02-04T08:00:01Z")),
+  ).toBe(true);
 });
 
 test("a source's own URL matches even when the title changed", () => {
